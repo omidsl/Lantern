@@ -92,11 +92,9 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   List<ServerNode> servers = [];
   int selectedIndex = 0;
 
-  // فیلتر و جستجو در تب سرورها
   String searchQuery = "";
   String selectedProtocolFilter = "ALL";
 
-  // تنظیمات سپر ضد فیلترینگ (Core Shield)
   bool bypassLocal = true;
   bool enableFragment = true;
   bool smartAutoSelect = true;
@@ -109,14 +107,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   String fragmentInterval = '10-20';
   String pingTestUrl = 'https://www.gstatic.com/generate_204';
 
-  // اطلاعات اشتراک (Happ Style)
   String subTitle = "اشتراک ویژه لنترن";
   String lastSubUrl = "";
   double usedGB = 0.0;
   double totalGB = 0.0;
   int expireDays = 0;
 
-  // لاگ‌های زنده هسته
   final List<String> coreLogs = [];
   String detectedIp = "---.---.---.---";
   String detectedCountry = "نامشخص";
@@ -261,7 +257,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     }
   }
 
-  // تست پینگ واقعی دوحالته (Xray Delay + TCP Handshake Fallback)
   Future<void> testSingleServerPing(int index) async {
     if (index < 0 || index >= servers.length) return;
     setState(() => servers[index].isTesting = true);
@@ -574,7 +569,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         ),
         content: Row(
           children: [
-            const Icon(Icons.Auto_awesome, color: Color(0xFF00F0FF), size: 18),
+            const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00F0FF), size: 18),
             const SizedBox(width: 10),
             Expanded(
               child: Text(msg, style: const TextStyle(color: Colors.white, fontSize: 12)),
@@ -595,7 +590,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       extendBody: true,
       body: Stack(
         children: [
-          // ۱. پس‌زمینه نوری سایبرپانک (Ambient Glow Orbs)
           Positioned(
             top: -100,
             left: -80,
@@ -625,8 +619,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             filter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
             child: Container(color: Colors.transparent),
           ),
-
-          // ۲. محتوای اصلی صفحات
           SafeArea(
             bottom: false,
             child: Column(
@@ -652,7 +644,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     );
   }
 
-  // هدر بالای برنامه با دکمه‌های شناور شیشه‌ای
   Widget _buildTopHeader(bool isConnected) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
@@ -769,7 +760,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     );
   }
 
-  // ==================== تب ۱: داشبورد اصلی (HOME) ====================
   Widget _buildDashboardTab(bool isConnected) {
     final activeServer = servers.isNotEmpty && selectedIndex < servers.length
         ? servers[selectedIndex]
@@ -779,22 +769,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 110),
       child: Column(
         children: [
-          // ۱. کارت شیشه‌ای اشتراک (Happ Style)
           _buildGlassSubscriptionCard(),
-
           const SizedBox(height: 22),
-
-          // ۲. دکمه اتصال مرکزی چندلایه نئونی (Animated Cyber Orb)
           _buildCyberConnectOrb(isConnected),
-
           const SizedBox(height: 22),
-
-          // ۳. پنل زنده ترافیک دانلود، آپلود و زمان اتصال
           _buildLiveTelemetryRow(isConnected),
-
           const SizedBox(height: 16),
-
-          // ۴. کارت سرور انتخابی فعلی (با قابلیت کلیک برای رفتن به لیست سرورها)
           GestureDetector(
             onTap: () => setState(() => currentTab = 1),
             child: Container(
@@ -859,10 +839,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 14),
-
-          // ۵. سوییچ‌های سریع ضد فیلترینگ روی داشبورد
           Row(
             children: [
               Expanded(
@@ -1012,7 +989,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // هاله بیرونی تنفسی
                 Container(
                   width: 175 + (pulse * 22),
                   height: 175 + (pulse * 22),
@@ -1021,7 +997,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
                     color: primaryOrb.withOpacity(isConnected ? 0.12 : 0.05),
                   ),
                 ),
-                // حلقه چرخان راداری در زمان اتصال
                 if (isConnected)
                   Transform.rotate(
                     angle: _rotateController.value * 2 * math.pi,
@@ -1040,7 +1015,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
-                // دکمه اصلی شیشه‌ای
                 Container(
                   width: 152,
                   height: 152,
@@ -1200,7 +1174,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     );
   }
 
-  // ==================== تب ۲: مدیریت حرفه‌ای سرورها (NODES) ====================
   Widget _buildNodesTab() {
     final filteredServers = servers.asMap().entries.where((entry) {
       final s = entry.value;
@@ -1212,7 +1185,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
 
     return Column(
       children: [
-        // نوار جستجو و فیلتر پروتکل
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 6, 18, 8),
           child: Column(
@@ -1272,8 +1244,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             ],
           ),
         ),
-
-        // لیست سرورها با آنتن سیگنال و منوی امکانات
         Expanded(
           child: filteredServers.isEmpty
               ? Center(
@@ -1377,7 +1347,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
                                 ],
                               ),
                             ),
-                            // دکمه تست پینگ تکی + آنتن گرافیکی
                             GestureDetector(
                               onTap: () => testSingleServerPing(realIndex),
                               child: Container(
@@ -1439,7 +1408,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     );
   }
 
-  // آنتن گرافیکی ۴ خط برای نمایش کیفیت پینگ
   Widget _buildSignalBars(int ping) {
     int activeBars = 0;
     Color barColor = Colors.white24;
@@ -1473,7 +1441,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     );
   }
 
-  // ==================== تب ۳: سپر ضد فیلترینگ (CORE SHIELD) ====================
   Widget _buildShieldSettingsTab() {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 8, 18, 110),
@@ -1488,8 +1455,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
           style: TextStyle(fontSize: 11, color: Colors.white54),
         ),
         const SizedBox(height: 16),
-
-        // کارت ۱: تنظیمات TLS Fragment
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1542,10 +1507,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             ],
           ),
         ),
-
         const SizedBox(height: 14),
-
-        // کارت ۲: انتخاب DNS امن
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1586,10 +1548,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             ],
           ),
         ),
-
         const SizedBox(height: 14),
-
-        // کارت ۳: مسیریابی و مالتی‌پلکسینگ
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1629,14 +1588,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     );
   }
 
-  // ==================== تب ۴: رادار آی‌پی و لاگ هسته (RADAR & LOGS) ====================
   Widget _buildRadarLogsTab(bool isConnected) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 8, 18, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // کارت بررسی آی‌پی و لوکیشن
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1673,7 +1630,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
               ],
             ),
           ),
-
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1686,8 +1642,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             ],
           ),
           const SizedBox(height: 8),
-
-          // ترمینال لاگ‌ها
           Expanded(
             child: Container(
               width: double.infinity,
@@ -1722,7 +1676,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     );
   }
 
-  // ==================== نوار ناوبری شناور شیشه‌ای پایین صفحه ====================
   Widget _buildFloatingGlassDock() {
     final items = [
       {'icon': Icons.dashboard_rounded, 'label': 'داشبورد'},
