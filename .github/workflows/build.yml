@@ -21,7 +21,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          flutter-version: '3.22.3'
           channel: 'stable'
 
       - name: Generate Android Platform Files & Permissions
@@ -32,16 +32,20 @@ jobs:
           mv pubspec.yaml.bak pubspec.yaml
           mv main.dart.bak lib/main.dart
           
+          # تنظیم سازگاری با هسته فیلترشکن و اندروید
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle
+          sed -i 's/android {/android {\n    packagingOptions {\n        jniLibs {\n            useLegacyPackaging true\n        }\n    }/g' android/app/build.gradle
           
+          # افزودن دسترسی‌های اینترنت و VPN به اندروید
           sed -i '/<application/i <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<application/i <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<application/<application android:extractNativeLibs="true"/g' android/app/src/main/AndroidManifest.xml
 
       - name: Install Dependencies & Build APK
         run: |
           flutter pub get
-          flutter build apk --release
+          flutter build apk --release --no-tree-shake-icons
 
       - name: Upload Ready APK
         uses: actions/upload-artifact@v4
