@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_v2ray/flutter_v2ray.dart';
@@ -28,7 +28,7 @@ class LanternVisionApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Lantern Vision',
+      title: 'Lantern VPN',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF05060B),
@@ -44,12 +44,13 @@ class LanternVisionApp extends StatelessWidget {
           child: child ?? const SizedBox.shrink(),
         );
       },
-      home: const VisionGlassHome(),
+      home: const LanternMainScreen(),
     );
   }
 }
 
 class ServerItem {
+  final String id;
   final String remark;
   final String uri;
   final String protocol;
@@ -57,6 +58,7 @@ class ServerItem {
   bool testing;
 
   ServerItem({
+    required this.id,
     required this.remark,
     required this.uri,
     required this.protocol,
@@ -65,6 +67,7 @@ class ServerItem {
   });
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'remark': remark,
         'uri': uri,
         'protocol': protocol,
@@ -72,6 +75,7 @@ class ServerItem {
       };
 
   factory ServerItem.fromJson(Map<String, dynamic> json) => ServerItem(
+        id: json['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
         remark: json['remark']?.toString() ?? 'Server',
         uri: json['uri']?.toString() ?? '',
         protocol: json['protocol']?.toString() ?? 'VLESS',
@@ -79,46 +83,44 @@ class ServerItem {
       );
 }
 
-class VisionGlassHome extends StatefulWidget {
-  const VisionGlassHome({super.key});
+class LanternMainScreen extends StatefulWidget {
+  const LanternMainScreen({super.key});
 
   @override
-  State<VisionGlassHome> createState() => _VisionGlassHomeState();
+  State<LanternMainScreen> createState() => _LanternMainScreenState();
 }
 
-class _VisionGlassHomeState extends State<VisionGlassHome>
+class _LanternMainScreenState extends State<LanternMainScreen>
     with SingleTickerProviderStateMixin {
   late final FlutterV2ray flutterV2ray;
   V2RayStatus v2rayStatus = V2RayStatus();
   late final AnimationController _auraController;
 
   List<ServerItem> servers = [];
-  String selectedServerUri = "";
+  int selectedIndex = 0;
 
+  bool isInitialized = false;
   bool isConnecting = false;
   bool isTestingPings = false;
-  int? realConnectedDelay;
-  Timer? _connectionWatchdog;
-  int _verifyGeneration = 0;
+  Timer? _watchdogTimer;
 
-  VoidCallback? _sheetUpdater;
+  // 0 = تونل استاندارد (بدون دستکاری کانفیگ - بالاترین سازگاری)
+  // 1 = بدون شبکه محلی (LAN Bypass)
+  // 2 = حالت Fragment (مخصوص سرورهای TLS مسدود شده)
+  int connectionMode = 0;
 
-  int routingMode = 0;
-
-  final List<double> dlHistory = List.filled(12, 0.15, growable: true);
-  final List<double> ulHistory = List.filled(12, 0.15, growable: true);
-
-  String subName = "اشتراک ابری لنترن";
+  String subName = "اشتراک لنترن";
   String savedSubUrl = "";
   double usedGB = 0.0;
   double totalGB = 0.0;
   int? expireTimestamp;
 
-  int get selectedIndex {
-    if (servers.isEmpty) return 0;
-    final idx = servers.indexWhere((s) => s.uri == selectedServerUri);
-    return idx != -1 ? idx : 0;
-  }
+  static const List<String> privateLanSubnets = [
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "127.0.0.0/8",
+  ];
 
   @override
   void initState() {
@@ -131,65 +133,60 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
     flutterV2ray = FlutterV2ray(
       onStatusChanged: (status) {
         if (!mounted) return;
-        final wasConnected = v2rayStatus.state == 'CONNECTED';
-        final nowConnected = status.state == 'CONNECTED';
-
         setState(() {
           v2rayStatus = status;
-          if (nowConnected || status.state == 'DISCONNECTED') {
+          if (status.state == 'CONNECTED' || status.state == 'DISCONNECTED') {
             isConnecting = false;
-            _connectionWatchdog?.cancel();
-          }
-          if (nowConnected) {
-            final dlBytes = (int.tryParse(status.downloadSpeed.toString()) ?? 0).toDouble();
-            final ulBytes = (int.tryParse(status.uploadSpeed.toString()) ?? 0).toDouble();
-            dlHistory.removeAt(0);
-            dlHistory.add((dlBytes / 1500000).clamp(0.18, 1.0));
-            ulHistory.removeAt(0);
-            ulHistory.add((ulBytes / 600000).clamp(0.18, 1.0));
-          } else {
-            realConnectedDelay = null;
+            _watchdogTimer?.cancel();
           }
         });
-
-        if (!wasConnected && nowConnected) {
-          _verifyConnectedInternetWithRetry();
-        }
       },
     );
-    flutterV2ray.initializeV2Ray();
-    _loadData();
+
+    _bootEngine();
+    _loadSavedData();
+  }
+
+  Future<void> _bootEngine() async {
+    try {
+      await flutterV2ray.initializeV2Ray();
+      if (mounted) {
+        setState(() => isInitialized = true);
+      }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
-    _connectionWatchdog?.cancel();
+    _watchdogTimer?.cancel();
     _auraController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadSavedData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList('lantern_servers') ?? [];
+      final rawList = prefs.getStringList('lantern_v7_servers') ?? [];
       final List<ServerItem> loaded = [];
       for (var item in rawList) {
         try {
-          final parsed = ServerItem.fromJson(jsonDecode(item));
-          if (parsed.uri.isNotEmpty) loaded.add(parsed);
+          final s = ServerItem.fromJson(jsonDecode(item));
+          if (s.uri.isNotEmpty) loaded.add(s);
         } catch (_) {}
       }
       if (!mounted) return;
       setState(() {
         servers = loaded;
-        selectedServerUri = prefs.getString('selectedServerUri') ??
-            (servers.isNotEmpty ? servers.first.uri : "");
-        subName = prefs.getString('subName') ?? "اشتراک ابری لنترن";
+        selectedIndex = prefs.getInt('selectedIndex') ?? 0;
+        if (selectedIndex < 0 || selectedIndex >= servers.length) {
+          selectedIndex = 0;
+        }
+        subName = prefs.getString('subName') ?? "اشتراک لنترن";
         savedSubUrl = prefs.getString('savedSubUrl') ?? "";
         usedGB = prefs.getDouble('usedGB') ?? 0.0;
         totalGB = prefs.getDouble('totalGB') ?? 0.0;
         expireTimestamp = prefs.getInt('expireTimestamp');
-        routingMode = prefs.getInt('routingMode') ?? 0;
+        connectionMode = prefs.getInt('connectionMode') ?? 0;
       });
     } catch (_) {}
   }
@@ -198,281 +195,220 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
-        'lantern_servers',
+        'lantern_v7_servers',
         servers.map((e) => jsonEncode(e.toJson())).toList(),
       );
-      await prefs.setString('selectedServerUri', selectedServerUri);
+      await prefs.setInt('selectedIndex', selectedIndex);
       await prefs.setString('subName', subName);
       await prefs.setString('savedSubUrl', savedSubUrl);
       await prefs.setDouble('usedGB', usedGB);
       await prefs.setDouble('totalGB', totalGB);
+      await prefs.setInt('connectionMode', connectionMode);
       if (expireTimestamp != null) {
         await prefs.setInt('expireTimestamp', expireTimestamp!);
-      } else {
-        await prefs.remove('expireTimestamp');
       }
-      await prefs.setInt('routingMode', routingMode);
     } catch (_) {}
   }
 
-  String _detectFlag(String remark) {
-    final up = remark.toUpperCase();
-    for (var rune in remark.runes) {
-      if (rune >= 0x1F1E6 && rune <= 0x1F1FF) return '🌐';
+  // ساخت کانفیگ ۱۰۰٪ خالص و بدون کرش (دقیقاً مشابه نسخه ۱ که روی گوشی شما وصل می‌شد)
+  String _buildWorkingConfig(String uriOrJson) {
+    final trimmed = uriOrJson.trim();
+    // اگر کاربر کانفیگ JSON کامل وارد کرده بود:
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      return trimmed;
     }
-    if (up.contains('DE') || up.contains('GERMANY') || remark.contains('آلمان')) return '🇩🇪';
-    if (up.contains('NL') || up.contains('NETHERLANDS') || remark.contains('هلند')) return '🇳🇱';
-    if (up.contains('US') || up.contains('AMERICA') || remark.contains('آمریکا')) return '🇺🇸';
-    if (up.contains('GB') || up.contains('UK') || up.contains('LONDON') || remark.contains('انگلیس')) return '🇬🇧';
-    if (up.contains('FI') || up.contains('FINLAND') || remark.contains('فنلاند')) return '🇫🇮';
-    if (up.contains('TR') || up.contains('TURKEY') || remark.contains('ترکیه')) return '🇹🇷';
-    if (up.contains('FR') || up.contains('FRANCE') || remark.contains('فرانسه')) return '🇫🇷';
-    if (up.contains('SE') || up.contains('SWEDEN') || remark.contains('سوئد')) return '🇸🇪';
-    if (up.contains('CH') || up.contains('SWISS') || remark.contains('سوئیس')) return '🇨🇭';
-    if (up.contains('AE') || up.contains('DUBAI') || remark.contains('امارات')) return '🇦🇪';
-    return '✦';
-  }
 
-  String _prepareCleanConfig(String rawJson, {bool useGeoFiles = true}) {
+    final V2RayURL parser = FlutterV2ray.parseFromURL(trimmed);
+    final String rawJson = parser.getFullConfiguration();
+
+    // در حالت ۰ و ۱، اصلاً به ساختار JSON دست نمی‌زنیم تا سرورهای Reality، WS و gRPC بدون خطا وصل شوند
+    if (connectionMode != 2) {
+      return rawJson;
+    }
+
+    // فقط اگر کاربر خودش صراحتاً تب «ضد فیلتر (Fragment)» را انتخاب کرده باشد:
     try {
       final Map<String, dynamic> config = jsonDecode(rawJson);
-
-      config['dns'] ??= {
-        'servers': ['1.1.1.1', '8.8.8.8']
-      };
-
-      if (config['inbounds'] is List) {
-        for (var inbound in config['inbounds']) {
-          if (inbound is Map<String, dynamic>) {
-            inbound['sniffing'] = {
-              'enabled': true,
-              'destOverride': ['http', 'tls']
-            };
-          }
-        }
-      }
-
-      final List outbounds = (config['outbounds'] ??= <dynamic>[]) as List;
-      if (outbounds.isEmpty) return rawJson;
-
-      Map<String, dynamic>? proxyOutbound;
-      for (var ob in outbounds) {
-        if (ob is Map<String, dynamic> &&
-            ob['protocol'] != 'freedom' &&
-            ob['protocol'] != 'blackhole') {
-          proxyOutbound = ob;
-          break;
-        }
-      }
-      proxyOutbound ??= outbounds.first as Map<String, dynamic>;
-
-      if (routingMode == 0 || routingMode == 2) {
-        if (!outbounds.any((o) => o is Map && o['tag'] == 'direct')) {
-          outbounds.add({
-            'tag': 'direct',
-            'protocol': 'freedom',
-            'settings': {'domainStrategy': 'UseIP'}
-          });
-        }
-
-        final routing = (config['routing'] ??= <String, dynamic>{}) as Map<String, dynamic>;
-        routing['domainStrategy'] = 'IPIfNonMatch';
-        final rules = (routing['rules'] ??= <dynamic>[]) as List;
-
-        rules.insert(0, {
-          'type': 'field',
-          'outboundTag': 'direct',
-          'domain': [
-            'regexp:.*\\.ir\$',
-            'regexp:.*\\.xn--mgba3a4f16a\$',
-            'domain:shaparak.ir',
-            'domain:bmi.ir',
-            'domain:mellat.ir',
-            'domain:snapp.ir',
-            'domain:digikala.com',
-            'domain:aparat.com',
-            'domain:divar.ir',
-            'domain:torob.com',
-            if (useGeoFiles) 'geosite:category-ir',
-          ]
-        });
-
-        rules.insert(1, {
-          'type': 'field',
-          'outboundTag': 'direct',
-          'ip': [
-            '127.0.0.0/8',
-            '10.0.0.0/8',
-            '172.16.0.0/12',
-            '192.168.0.0/16',
-            if (useGeoFiles) 'geoip:ir',
-          ]
-        });
-      }
-
-      if (routingMode == 2) {
-        final streamSettings =
-            (proxyOutbound['streamSettings'] ??= <String, dynamic>{}) as Map<String, dynamic>;
-        final existingSockopt =
-            (streamSettings['sockopt'] ??= <String, dynamic>{}) as Map<String, dynamic>;
-        existingSockopt['dialerProxy'] = 'fragment';
-        existingSockopt['tcpNoDelay'] = true;
-
-        if (!outbounds.any((o) => o is Map && o['tag'] == 'fragment')) {
-          outbounds.add({
-            'tag': 'fragment',
-            'protocol': 'freedom',
-            'settings': {
-              'domainStrategy': 'AsIs',
-              'fragment': {
-                'packets': 'tlshello',
-                'length': '10-20',
-                'interval': '10-20',
-              }
+      final outbounds = config['outbounds'];
+      if (outbounds is List && outbounds.isNotEmpty) {
+        final Map<String, dynamic> mainOut = outbounds[0];
+        mainOut['streamSettings'] ??= <String, dynamic>{};
+        mainOut['streamSettings']['sockopt'] = {
+          'dialerProxy': 'fragment',
+          'tcpNoDelay': true,
+        };
+        outbounds.add({
+          'tag': 'fragment',
+          'protocol': 'freedom',
+          'settings': {
+            'domainStrategy': 'AsIs',
+            'fragment': {
+              'packets': 'tlshello',
+              'length': '10-20',
+              'interval': '10-20',
             }
-          });
-        }
+          }
+        });
       }
-
       return jsonEncode(config);
     } catch (_) {
       return rawJson;
     }
   }
 
-  Future<void> _verifyConnectedInternetWithRetry() async {
-    final int gen = ++_verifyGeneration;
-    for (int attempt = 1; attempt <= 3; attempt++) {
-      await Future.delayed(Duration(milliseconds: 900 * attempt));
-      if (!mounted || gen != _verifyGeneration || v2rayStatus.state != 'CONNECTED') return;
-
-      try {
-        final delay = await flutterV2ray
-            .getConnectedServerDelay()
-            .timeout(const Duration(seconds: 4), onTimeout: () => -1);
-        if (!mounted || gen != _verifyGeneration) return;
-        if (delay > 0) {
-          setState(() => realConnectedDelay = delay);
-          return;
-        }
-      } catch (_) {}
-    }
-
-    if (mounted && gen == _verifyGeneration && v2rayStatus.state == 'CONNECTED') {
-      setState(() => realConnectedDelay = -1);
-    }
-  }
-
-  Future<void> _startConnection() async {
+  // تابع اتصال مستقیم و تضمینی به سرور انتخاب‌شده توسط کاربر
+  Future<void> connectToSelectedServer() async {
     if (servers.isEmpty) {
-      _notify('ابتدا لینک اشتراک یا کانفیگ را کپی کرده و دکمه + بالا را بزنید.');
+      _showAddConfigDialog();
       return;
     }
 
-    final server = servers[selectedIndex];
-    selectedServerUri = server.uri;
+    if (selectedIndex < 0 || selectedIndex >= servers.length) {
+      selectedIndex = 0;
+    }
 
-    setState(() {
-      isConnecting = true;
-      realConnectedDelay = null;
-    });
+    final ServerItem target = servers[selectedIndex];
 
-    _connectionWatchdog?.cancel();
-    _connectionWatchdog = Timer(const Duration(seconds: 15), () async {
+    setState(() => isConnecting = true);
+
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer(const Duration(seconds: 12), () {
       if (mounted && isConnecting && v2rayStatus.state != 'CONNECTED') {
         setState(() => isConnecting = false);
-        await flutterV2ray.stopV2Ray();
-        _notify('زمان اتصال به پایان رسید (Timeout). سرور دیگری را امتحان کنید.');
       }
     });
 
     try {
-      final hasPerm = await flutterV2ray.requestPermission();
-      if (!hasPerm) {
-        _connectionWatchdog?.cancel();
+      if (!isInitialized) {
+        await flutterV2ray.initializeV2Ray();
+        isInitialized = true;
+      }
+
+      final bool hasPermission = await flutterV2ray.requestPermission();
+      if (!hasPermission) {
+        _watchdogTimer?.cancel();
         if (mounted) setState(() => isConnecting = false);
-        _notify('مجوز اتصال VPN در گوشی تایید نشد.');
+        _notify('مجوز ساخت VPN در گوشی تایید نشد.');
         return;
       }
 
-      final parsed = FlutterV2ray.parseFromURL(server.uri);
-      final cleanConfig = _prepareCleanConfig(parsed.getFullConfiguration(), useGeoFiles: false);
+      final String finalConfig = _buildWorkingConfig(target.uri);
 
       await flutterV2ray.startV2Ray(
-        remark: parsed.remark.isNotEmpty ? parsed.remark : server.remark,
-        config: cleanConfig,
-        bypassSubnets: null,
+        remark: target.remark,
+        config: finalConfig,
+        bypassSubnets: connectionMode == 1 ? privateLanSubnets : null,
       );
-    } catch (_) {
-      _connectionWatchdog?.cancel();
+    } catch (e) {
+      _watchdogTimer?.cancel();
       if (mounted) setState(() => isConnecting = false);
-      _notify('خطا در اجرای این کانفیگ. سرور بعدی را امتحان کنید.');
+      _notify('خطا در اتصال به "${target.remark}". کانفیگ دیگری را انتخاب کنید.');
     }
   }
 
   Future<void> toggleConnection() async {
     HapticFeedback.mediumImpact();
     if (v2rayStatus.state == 'CONNECTED' || isConnecting) {
-      _connectionWatchdog?.cancel();
+      _watchdogTimer?.cancel();
       setState(() => isConnecting = false);
       await flutterV2ray.stopV2Ray();
       return;
     }
-    await _startConnection();
+    await connectToSelectedServer();
   }
 
-  Future<void> switchToNextHealthyServer() async {
-    if (servers.length < 2) return;
+  // انتخاب دستی سرور توسط کاربر (و سوییچ خودکار اگر در حال حاضر وصل باشد)
+  Future<void> selectServerManually(int index) async {
+    if (index < 0 || index >= servers.length) return;
     HapticFeedback.selectionClick();
 
-    int nextIdx = (selectedIndex + 1) % servers.length;
-    for (int i = 1; i < servers.length; i++) {
-      final candidate = (selectedIndex + i) % servers.length;
-      if (servers[candidate].ping > 0) {
-        nextIdx = candidate;
-        break;
-      }
-    }
+    final bool wasConnected = v2rayStatus.state == 'CONNECTED';
+    setState(() => selectedIndex = index);
+    await _saveData();
 
-    setState(() => selectedServerUri = servers[nextIdx].uri);
-    _saveData();
-
-    if (v2rayStatus.state == 'CONNECTED' || isConnecting) {
+    if (wasConnected) {
+      _notify('در حال تغییر سرور به ${servers[index].remark}...');
       await flutterV2ray.stopV2Ray();
-      await Future.delayed(const Duration(milliseconds: 450));
+      await Future.delayed(const Duration(milliseconds: 500));
+      await connectToSelectedServer();
+    } else {
+      _notify('سرور "${servers[index].remark}" انتخاب شد. دکمه وسط را برای اتصال بزنید.');
     }
-    await _startConnection();
   }
 
+  // استخراج Host و Port برای پینگ سریع و تضمینی
+  Map<String, dynamic>? _extractHostPort(String uriStr) {
+    try {
+      if (uriStr.startsWith('vmess://')) {
+        final decoded = _robustBase64Decode(uriStr.substring(8));
+        final map = jsonDecode(decoded);
+        return {
+          'host': map['add']?.toString() ?? '',
+          'port': int.tryParse(map['port'].toString()) ?? 443,
+        };
+      } else if (!uriStr.startsWith('{')) {
+        final hashIdx = uriStr.indexOf('#');
+        final clean = hashIdx != -1 ? uriStr.substring(0, hashIdx) : uriStr;
+        final u = Uri.parse(clean);
+        return {
+          'host': u.host,
+          'port': u.port > 0 ? u.port : 443,
+        };
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // تست پینگ ترکیبی (اول هسته Xray، و اگر جواب نداد سوکت مستقیم) بدون تغییر دادن سرور انتخابی کاربر!
   Future<void> pingSingleServer(ServerItem item) async {
     if (!mounted) return;
     setState(() => item.testing = true);
-    _sheetUpdater?.call();
 
-    int pingVal = -2;
+    int delay = -2;
+
     try {
-      final parser = FlutterV2ray.parseFromURL(item.uri);
-      final cfg = _prepareCleanConfig(parser.getFullConfiguration(), useGeoFiles: false);
-      pingVal = await flutterV2ray
+      final cfg = _buildWorkingConfig(item.uri);
+      delay = await flutterV2ray
           .getServerDelay(config: cfg)
-          .timeout(const Duration(milliseconds: 4500), onTimeout: () => -2);
+          .timeout(const Duration(milliseconds: 3000), onTimeout: () => -1);
     } catch (_) {
-      pingVal = -2;
+      delay = -1;
+    }
+
+    if (delay <= 0) {
+      try {
+        final hp = _extractHostPort(item.uri);
+        if (hp != null && hp['host'].toString().isNotEmpty) {
+          final sw = Stopwatch()..start();
+          final sock = await Socket.connect(
+            hp['host'],
+            hp['port'],
+            timeout: const Duration(milliseconds: 2000),
+          );
+          sw.stop();
+          await sock.close();
+          delay = sw.elapsedMilliseconds;
+        }
+      } catch (_) {
+        delay = -2;
+      }
     }
 
     if (!mounted) return;
     setState(() {
-      item.ping = pingVal > 0 ? pingVal : -2;
+      item.ping = delay > 0 ? delay : -2;
       item.testing = false;
     });
-    _sheetUpdater?.call();
   }
 
-  Future<void> pingAllServers() async {
+  Future<void> pingAllServers({bool sortAfter = false}) async {
     if (servers.isEmpty || isTestingPings) return;
     HapticFeedback.lightImpact();
+
+    final String currentlySelectedId =
+        (selectedIndex >= 0 && selectedIndex < servers.length) ? servers[selectedIndex].id : '';
+
     setState(() => isTestingPings = true);
-    _sheetUpdater?.call();
 
     final snapshot = List<ServerItem>.from(servers);
     const int batch = 5;
@@ -483,21 +419,21 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
 
     if (!mounted) return;
     setState(() {
-      servers.sort((a, b) {
-        if (a.ping <= 0 && b.ping <= 0) return 0;
-        if (a.ping <= 0) return 1;
-        if (b.ping <= 0) return -1;
-        return a.ping.compareTo(b.ping);
-      });
-      final currentStillHealthy =
-          servers.any((s) => s.uri == selectedServerUri && s.ping > 0);
-      if (!currentStillHealthy && v2rayStatus.state != 'CONNECTED') {
-        final best = servers.firstWhere((s) => s.ping > 0, orElse: () => servers.first);
-        selectedServerUri = best.uri;
+      if (sortAfter) {
+        servers.sort((a, b) {
+          if (a.ping <= 0 && b.ping <= 0) return 0;
+          if (a.ping <= 0) return 1;
+          if (b.ping <= 0) return -1;
+          return a.ping.compareTo(b.ping);
+        });
+      }
+      // حفظ ۱۰۰ درصدی سروری که کاربر دستی انتخاب کرده بود
+      if (currentlySelectedId.isNotEmpty) {
+        final newIdx = servers.indexWhere((s) => s.id == currentlySelectedId);
+        if (newIdx != -1) selectedIndex = newIdx;
       }
       isTestingPings = false;
     });
-    _sheetUpdater?.call();
     _saveData();
   }
 
@@ -510,31 +446,107 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
     return utf8.decode(base64.decode(clean), allowMalformed: true);
   }
 
-  String _decodeProfileTitle(String rawTitle) {
-    final trimmed = rawTitle.trim();
-    if (trimmed.toLowerCase().startsWith('base64:')) {
-      try {
-        return _robustBase64Decode(trimmed.substring(7));
-      } catch (_) {}
-    }
-    try {
-      return utf8.decode(latin1.encode(trimmed));
-    } catch (_) {
-      return trimmed;
-    }
+  // پنجره افزودن کانفیگ (هم از کلیپ‌بورد و هم تایپ/پیست دستی)
+  void _showAddConfigDialog() {
+    final TextEditingController textCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF101526),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(color: Colors.white.withOpacity(0.15)),
+          ),
+          title: const Text(
+            'افزودن کانفیگ یا لینک اشتراک',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'لینک vless / vmess / trojan یا لینک اشتراک (http) را در کادر زیر قرار دهید:',
+                style: TextStyle(fontSize: 11.5, color: Colors.white60),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: textCtrl,
+                maxLines: 3,
+                style: const TextStyle(fontSize: 12),
+                decoration: InputDecoration(
+                  hintText: 'vless://... یا https://...',
+                  hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
+                  filled: true,
+                  fillColor: Colors.black26,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFA87FFB)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () async {
+                    final data = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (data?.text != null) {
+                      textCtrl.text = data!.text!.trim();
+                    }
+                  },
+                  icon: const Icon(Icons.content_paste_rounded, size: 17, color: Color(0xFFA87FFB)),
+                  label: const Text(
+                    'چسباندن خودکار از کلیپ‌بورد',
+                    style: TextStyle(fontSize: 12, color: Color(0xFFA87FFB)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('انصراف', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4B90FF),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                final input = textCtrl.text.trim();
+                Navigator.pop(ctx);
+                if (input.isNotEmpty) {
+                  await _processInputText(input);
+                } else {
+                  await _importFromClipboardDirect();
+                }
+              },
+              child: const Text('افزودن به لیست', style: TextStyle(color: Colors.white, fontSize: 12)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  Future<void> importClipboard() async {
-    HapticFeedback.lightImpact();
+  Future<void> _importFromClipboardDirect() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data == null || data.text == null || data.text!.trim().isEmpty) {
       _notify('کلیپ‌بورد خالی است!');
       return;
     }
+    await _processInputText(data.text!.trim());
+  }
 
-    final text = data.text!.trim();
+  Future<void> _processInputText(String text) async {
     if (text.startsWith('http://') || text.startsWith('https://')) {
-      _notify('در حال دریافت اطلاعات اشتراک...');
+      _notify('در حال دریافت سرورها از لینک اشتراک...');
       await _fetchSub(text);
     } else {
       _addRawLinks(text, replace: false);
@@ -556,8 +568,8 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
           } catch (_) {}
         }
 
-        final addedCount = _addRawLinks(body, replace: true);
-        if (addedCount > 0) {
+        final added = _addRawLinks(body, replace: true);
+        if (added > 0) {
           savedSubUrl = url;
           usedGB = 0.0;
           totalGB = 0.0;
@@ -566,18 +578,14 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
           final info = res.headers['subscription-userinfo'];
           if (info != null) _parseUserInfo(info);
 
-          final title = res.headers['profile-title'];
-          subName = title != null && title.isNotEmpty
-              ? _decodeProfileTitle(title)
-              : Uri.parse(url).host;
-
+          subName = Uri.parse(url).host;
           _saveData();
         }
       } else {
-        _notify('خطا در دریافت لینک اشتراک (کد ${res.statusCode})');
+        _notify('خطا در دریافت اشتراک (کد ${res.statusCode})');
       }
     } catch (_) {
-      _notify('عدم دسترسی به سرور اشتراک. اینترنت را بررسی کنید.');
+      _notify('عدم دسترسی به لینک اشتراک. اینترنت را بررسی کنید.');
     }
   }
 
@@ -604,16 +612,6 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
     } catch (_) {}
   }
 
-  String _formatExpireBadge() {
-    if (expireTimestamp == null) return '${servers.length} سرور آماده';
-    if (expireTimestamp == 0) return 'نامحدود ∞';
-    final expDate = DateTime.fromMillisecondsSinceEpoch(expireTimestamp! * 1000);
-    final diffHours = expDate.difference(DateTime.now()).inHours;
-    if (diffHours < 0) return 'منقضی شده ⚠️';
-    final days = (diffHours / 24).ceil();
-    return '$days روز فعال';
-  }
-
   String _getProto(String link) {
     final l = link.toLowerCase();
     if (l.startsWith('vless://')) return 'VLESS';
@@ -636,9 +634,10 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
         try {
           final p = FlutterV2ray.parseFromURL(link);
           parsedList.add(ServerItem(
+            id: '${DateTime.now().microsecondsSinceEpoch}_${parsedList.length}',
             remark: p.remark.isNotEmpty
                 ? p.remark
-                : 'Server #${servers.length + parsedList.length + 1}',
+                : 'سرور ${servers.length + parsedList.length + 1}',
             uri: link,
             protocol: _getProto(link),
           ));
@@ -647,24 +646,38 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
     }
 
     if (parsedList.isEmpty) {
-      _notify('هیچ کانفیگ معتبری در لینک دریافتی پیدا نشد. سرورهای قبلی حفظ شدند.');
+      _notify('لینک کانفیگ معتبری پیدا نشد.');
       return 0;
     }
 
     setState(() {
       if (replace) {
         servers = parsedList;
+        selectedIndex = 0;
       } else {
         servers.insertAll(0, parsedList);
-      }
-      if (selectedServerUri.isEmpty || !servers.any((s) => s.uri == selectedServerUri)) {
-        selectedServerUri = servers.first.uri;
+        selectedIndex = 0;
       }
     });
     _saveData();
-    _notify('✦ ${parsedList.length} سرور آماده شد. در حال تست پینگ واقعی...');
-    pingAllServers();
+    _notify('✅ ${parsedList.length} سرور اضافه و انتخاب شد!');
+    pingAllServers(sortAfter: false);
     return parsedList.length;
+  }
+
+  String _detectFlag(String remark) {
+    final up = remark.toUpperCase();
+    if (up.contains('DE') || up.contains('GERMANY') || remark.contains('آلمان')) return '🇩🇪';
+    if (up.contains('NL') || up.contains('NETHERLANDS') || remark.contains('هلند')) return '🇳🇱';
+    if (up.contains('US') || up.contains('AMERICA') || remark.contains('آمریکا')) return '🇺🇸';
+    if (up.contains('GB') || up.contains('UK') || up.contains('LONDON') || remark.contains('انگلیس')) return '🇬🇧';
+    if (up.contains('FI') || up.contains('FINLAND') || remark.contains('فنلاند')) return '🇫🇮';
+    if (up.contains('TR') || up.contains('TURKEY') || remark.contains('ترکیه')) return '🇹🇷';
+    if (up.contains('FR') || up.contains('FRANCE') || remark.contains('فرانسه')) return '🇫🇷';
+    if (up.contains('SE') || up.contains('SWEDEN') || remark.contains('سوئد')) return '🇸🇪';
+    if (up.contains('CH') || up.contains('SWISS') || remark.contains('سوئیس')) return '🇨🇭';
+    if (up.contains('AE') || up.contains('DUBAI') || remark.contains('امارات')) return '🇦🇪';
+    return '🌐';
   }
 
   String _formatSpeed(dynamic speed) {
@@ -674,353 +687,36 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
     return '${(bytes / 1048576).toStringAsFixed(2)} MB/s';
   }
 
-  void _notify(String msg, {SnackBarAction? action}) {
+  void _notify(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: const Color(0xFF141829),
+        backgroundColor: const Color(0xFF161B30),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: const Color(0xFFA87FFB).withOpacity(0.45)),
         ),
-        duration: const Duration(seconds: 3),
-        action: action,
+        duration: const Duration(seconds: 2),
         content: Text(msg, style: const TextStyle(color: Colors.white, fontSize: 12)),
       ),
-    );
-  }
-
-  void _openGlassServersSheet() {
-    HapticFeedback.selectionClick();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            _sheetUpdater = () {
-              if (context.mounted) setSheetState(() {});
-            };
-            return ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(38)),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(
-                  height: MediaQuery.of(context).size.height * 0.76,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0C0F1C).withOpacity(0.88),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(38)),
-                    border: Border.all(color: Colors.white.withOpacity(0.16)),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.white30,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'سرورهای هوشمند (${servers.length})',
-                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                            ),
-                            Row(
-                              children: [
-                                TextButton.icon(
-                                  onPressed: isTestingPings ? null : () => pingAllServers(),
-                                  icon: isTestingPings
-                                      ? const SizedBox(
-                                          width: 14,
-                                          height: 14,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFA87FFB)),
-                                        )
-                                      : const Icon(Icons.bolt_rounded, size: 18, color: Color(0xFFA87FFB)),
-                                  label: const Text('تست پینگ واقعی', style: TextStyle(color: Color(0xFFA87FFB), fontSize: 12)),
-                                ),
-                                if (servers.any((s) => s.ping == -2))
-                                  IconButton(
-                                    tooltip: 'پاکسازی سرورهای بدون پینگ',
-                                    icon: const Icon(Icons.auto_fix_high_rounded, size: 18, color: Colors.amberAccent),
-                                    onPressed: () {
-                                      final backup = List<ServerItem>.from(servers);
-                                      setState(() {
-                                        servers.removeWhere((s) => s.ping == -2);
-                                      });
-                                      setSheetState(() {});
-                                      _saveData();
-                                      _notify(
-                                        'سرورهای Timeout پاکسازی شدند.',
-                                        action: SnackBarAction(
-                                          label: 'بازگردانی',
-                                          textColor: const Color(0xFF00F5D4),
-                                          onPressed: () {
-                                            setState(() => servers = backup);
-                                            _sheetUpdater?.call();
-                                            _saveData();
-                                          },
-                                        ),
-                                      );
-                                    },
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Divider(color: Colors.white10, height: 1),
-                      Expanded(
-                        child: servers.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'لیست سرورها خالی است.\nلینک اشتراک یا کانفیگ را کپی کرده و دکمه + را بزنید.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.white38, fontSize: 13, height: 1.6),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: servers.length,
-                                itemBuilder: (context, index) {
-                                  final s = servers[index];
-                                  final isSel = s.uri == selectedServerUri;
-
-                                  Color pColor = const Color(0xFF00F5D4);
-                                  if (s.ping > 300) pColor = const Color(0xFFFBBF24);
-                                  if (s.ping <= 0 || s.ping > 700) pColor = const Color(0xFFF43F5E);
-
-                                  return Dismissible(
-                                    key: ValueKey('${s.uri}_$index'),
-                                    direction: DismissDirection.endToStart,
-                                    background: Container(
-                                      margin: const EdgeInsets.only(bottom: 10),
-                                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                                      alignment: Alignment.centerLeft,
-                                      decoration: BoxDecoration(
-                                        color: Colors.redAccent.withOpacity(0.25),
-                                        borderRadius: BorderRadius.circular(22),
-                                      ),
-                                      child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-                                    ),
-                                    onDismissed: (_) {
-                                      final removed = s;
-                                      setState(() => servers.removeAt(index));
-                                      setSheetState(() {});
-                                      _saveData();
-                                      _notify(
-                                        'سرور ${removed.remark} حذف شد.',
-                                        action: SnackBarAction(
-                                          label: 'بازگردانی',
-                                          textColor: const Color(0xFF00F5D4),
-                                          onPressed: () {
-                                            setState(() => servers.insert(index.clamp(0, servers.length), removed));
-                                            _sheetUpdater?.call();
-                                            _saveData();
-                                          },
-                                        ),
-                                      );
-                                    },
-                                    child: GestureDetector(
-                                      onTap: () async {
-                                        final wasConn = v2rayStatus.state == 'CONNECTED' || isConnecting;
-                                        setState(() => selectedServerUri = s.uri);
-                                        _saveData();
-                                        Navigator.pop(context);
-                                        if (wasConn) {
-                                          await flutterV2ray.stopV2Ray();
-                                          await Future.delayed(const Duration(milliseconds: 450));
-                                          await _startConnection();
-                                        }
-                                      },
-                                      child: Container(
-                                        margin: const EdgeInsets.only(bottom: 10),
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                                        decoration: BoxDecoration(
-                                          gradient: isSel
-                                              ? LinearGradient(
-                                                  colors: [
-                                                    const Color(0xFF4B90FF).withOpacity(0.24),
-                                                    const Color(0xFFA87FFB).withOpacity(0.18),
-                                                  ],
-                                                )
-                                              : null,
-                                          color: isSel ? null : Colors.white.withOpacity(0.045),
-                                          borderRadius: BorderRadius.circular(22),
-                                          border: Border.all(
-                                            color: isSel
-                                                ? const Color(0xFFA87FFB).withOpacity(0.7)
-                                                : Colors.white.withOpacity(0.08),
-                                            width: isSel ? 1.4 : 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 38,
-                                              height: 38,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: Colors.white.withOpacity(0.07),
-                                                border: Border.all(color: Colors.white.withOpacity(0.14)),
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  _detectFlag(s.remark),
-                                                  style: const TextStyle(fontSize: 18),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    s.remark,
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                                                  ),
-                                                  const SizedBox(height: 3),
-                                                  Text(
-                                                    '${s.protocol} • بکشید به چپ برای حذف',
-                                                    style: const TextStyle(fontSize: 10, color: Colors.white54),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            if (s.testing)
-                                              const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color: Color(0xFFA87FFB),
-                                                ),
-                                              )
-                                            else ...[
-                                              _buildSignalBars(s.ping),
-                                              const SizedBox(width: 8),
-                                              GestureDetector(
-                                                onTap: () => pingSingleServer(s),
-                                                child: Text(
-                                                  s.ping > 0 ? '${s.ping} ms' : (s.ping == -2 ? 'Timeout' : 'تست'),
-                                                  style: TextStyle(
-                                                    color: s.ping > 0 ? pColor : Colors.white38,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    ).whenComplete(() => _sheetUpdater = null);
-  }
-
-  Widget _buildSignalBars(int ping) {
-    int active = 0;
-    Color col = Colors.white24;
-    if (ping > 0 && ping < 180) {
-      active = 4;
-      col = const Color(0xFF00F5D4);
-    } else if (ping >= 180 && ping < 320) {
-      active = 3;
-      col = const Color(0xFF4B90FF);
-    } else if (ping >= 320 && ping < 600) {
-      active = 2;
-      col = const Color(0xFFFBBF24);
-    } else if (ping >= 600) {
-      active = 1;
-      col = const Color(0xFFF43F5E);
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: List.generate(4, (i) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          width: 3,
-          height: 4.0 + (i * 3.0),
-          decoration: BoxDecoration(
-            color: i < active ? col : Colors.white12,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        );
-      }),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final bool isConnected = v2rayStatus.state == 'CONNECTED';
-    final ServerItem? currentServer = servers.isNotEmpty ? servers[selectedIndex] : null;
+    final ServerItem? activeServer =
+        (servers.isNotEmpty && selectedIndex < servers.length) ? servers[selectedIndex] : null;
 
     return Scaffold(
       body: Stack(
         children: [
+          // ۱. هاله‌های نوری Gemini در پس‌زمینه
           Positioned(
-            top: -90,
+            top: -80,
             right: -60,
-            child: Container(
-              width: 290,
-              height: 290,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    (isConnected ? const Color(0xFF00F5D4) : const Color(0xFF4B90FF))
-                        .withOpacity(0.30),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.28,
-            left: -100,
-            child: Container(
-              width: 310,
-              height: 310,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFA87FFB).withOpacity(0.25),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -80,
-            right: 20,
             child: Container(
               width: 260,
               height: 260,
@@ -1028,93 +724,56 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFF6B9D).withOpacity(0.18),
+                    (isConnected ? const Color(0xFF00F5D4) : const Color(0xFF4B90FF))
+                        .withOpacity(0.28),
                     Colors.transparent,
                   ],
                 ),
               ),
             ),
           ),
+          Positioned(
+            top: 200,
+            left: -90,
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFA87FFB).withOpacity(0.22),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ۲. چیدمان اصلی: بالا دکمه اتصال و وضعیت، پایین لیست مستقیم و قابل انتخاب سرورها
           SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        child: Column(
-                          children: [
-                            _buildDynamicIsland(isConnected),
-                            const SizedBox(height: 10),
-                            _buildHeader(),
-                            const SizedBox(height: 12),
-                            _buildFrostedSubCard(),
-                            const SizedBox(height: 10),
-                            _buildSegmentedRoutingMode(),
-                            const Spacer(),
-                            const SizedBox(height: 14),
-                            _buildGeminiLivingOrb(isConnected),
-                            const SizedBox(height: 14),
-                            const Spacer(),
-                            _buildSparklineBentoRow(isConnected),
-                            const SizedBox(height: 10),
-                            _buildServerCapsule(currentServer, isConnected),
-                            const SizedBox(height: 6),
-                          ],
-                        ),
-                      ),
-                    ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                  child: Column(
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 10),
+                      _buildModeSelector(),
+                      const SizedBox(height: 14),
+                      _buildGeminiOrbSection(isConnected, activeServer),
+                      const SizedBox(height: 12),
+                      _buildTelemetryBar(isConnected),
+                    ],
                   ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDynamicIsland(bool isConnected) {
-    final String text = isConnecting
-        ? 'CONNECTING TO XRAY...'
-        : (isConnected
-            ? 'PROTECTED • ${realConnectedDelay != null && realConnectedDelay! > 0 ? "$realConnectedDelay MS" : "TUNNEL ACTIVE"}'
-            : 'XRAY CORE • STANDBY');
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF090B14).withOpacity(0.92),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isConnected
-                  ? const Color(0xFF00F5D4)
-                  : (isConnecting ? const Color(0xFFFBBF24) : Colors.white38),
-              boxShadow: isConnected
-                  ? [const BoxShadow(color: Color(0xFF00F5D4), blurRadius: 8)]
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.9,
-              color: Colors.white70,
+                ),
+                const SizedBox(height: 6),
+                // ۳. لیست مستقیم سرورها روی صفحه اصلی برای انتخاب دستی راحت
+                Expanded(
+                  child: _buildDirectServerList(isConnected),
+                ),
+              ],
             ),
           ),
         ],
@@ -1126,66 +785,68 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Flexible(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(13),
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF4B90FF).withOpacity(0.28),
-                      const Color(0xFFA87FFB).withOpacity(0.28),
-                    ],
-                  ),
-                  border: Border.all(color: Colors.white.withOpacity(0.20)),
+        Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(13),
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF4B90FF).withOpacity(0.3),
+                    const Color(0xFFA87FFB).withOpacity(0.3),
+                  ],
                 ),
-                child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFFA87FFB), size: 19),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
               ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [Colors.white, Color(0xFFC7D2FE), Color(0xFFF472B6)],
-                  ).createShader(bounds),
-                  child: const Text(
-                    'Lantern',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 20,
-                      letterSpacing: 0.4,
-                      color: Colors.white,
-                    ),
-                  ),
+              child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFFA87FFB), size: 19),
+            ),
+            const SizedBox(width: 10),
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Colors.white, Color(0xFFC7D2FE), Color(0xFFF472B6)],
+              ).createShader(bounds),
+              child: const Text(
+                'Lantern',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                  color: Colors.white,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             if (savedSubUrl.isNotEmpty) ...[
-              _buildCircleGlassBtn(
+              _buildCircleBtn(
                 icon: Icons.sync_rounded,
+                tooltip: 'آپدیت اشتراک',
                 onTap: () => _fetchSub(savedSubUrl),
               ),
               const SizedBox(width: 8),
             ],
-            _buildCircleGlassBtn(
+            _buildCircleBtn(
               icon: isTestingPings ? Icons.hourglass_top_rounded : Icons.bolt_rounded,
               color: const Color(0xFFA87FFB),
-              onTap: pingAllServers,
+              tooltip: 'تست پینگ همه',
+              onTap: () => pingAllServers(sortAfter: false),
             ),
             const SizedBox(width: 8),
-            _buildCircleGlassBtn(
+            _buildCircleBtn(
+              icon: Icons.content_paste_go_rounded,
+              color: const Color(0xFF00F5D4),
+              tooltip: 'افزودن فوری از کلیپ‌بورد',
+              onTap: _importFromClipboardDirect,
+            ),
+            const SizedBox(width: 8),
+            _buildCircleBtn(
               icon: Icons.add_rounded,
               color: const Color(0xFF4B90FF),
-              onTap: importClipboard,
+              tooltip: 'افزودن دستی کانفیگ',
+              onTap: _showAddConfigDialog,
             ),
           ],
         ),
@@ -1193,146 +854,61 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
     );
   }
 
-  Widget _buildCircleGlassBtn({
+  Widget _buildCircleBtn({
     required IconData icon,
+    required String tooltip,
     Color color = Colors.white70,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            colors: [Colors.white.withOpacity(0.09), Colors.white.withOpacity(0.03)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      child: Tooltip(
+        message: tooltip,
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(0.07),
+            border: Border.all(color: Colors.white.withOpacity(0.15)),
           ),
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
+          child: Icon(icon, color: color, size: 19),
         ),
-        child: Icon(icon, color: color, size: 19),
       ),
     );
   }
 
-  Widget _buildFrostedSubCard() {
-    final double progress = totalGB > 0 ? (usedGB / totalGB).clamp(0.0, 1.0) : 0.35;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.03)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.14)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    const Icon(Icons.auto_awesome, color: Color(0xFFA87FFB), size: 15),
-                    const SizedBox(width: 7),
-                    Expanded(
-                      child: Text(
-                        subName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFA87FFB).withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFA87FFB).withOpacity(0.38)),
-                ),
-                child: Text(
-                  _formatExpireBadge(),
-                  style: const TextStyle(color: Color(0xFFE9D5FF), fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 5.5,
-              backgroundColor: Colors.white10,
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA87FFB)),
-            ),
-          ),
-          const SizedBox(height: 7),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                totalGB > 0
-                    ? 'مصرف شده: $usedGB GB'
-                    : (servers.isEmpty ? 'کپی لینک و زدن + برای افزودن اشتراک' : 'مصرف: $usedGB GB'),
-                style: const TextStyle(fontSize: 10.5, color: Colors.white60),
-              ),
-              Text(
-                totalGB > 0 ? 'حجم کل: $totalGB GB' : 'حجم: نامحدود ∞',
-                style: const TextStyle(fontSize: 10.5, color: Colors.white60),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSegmentedRoutingMode() {
-    final modes = ['هوشمند (ایران)', 'تونل کامل', 'ضد فیلتر ⚡'];
+  Widget _buildModeSelector() {
+    final modes = ['استاندارد (پایدار)', 'بدون شبکه محلی', 'ضد فیلتر (Fragment)'];
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.11)),
       ),
       child: Row(
         children: List.generate(modes.length, (i) {
-          final active = routingMode == i;
+          final active = connectionMode == i;
           return Expanded(
             child: GestureDetector(
-              onTap: () async {
+              onTap: () {
                 HapticFeedback.selectionClick();
-                setState(() => routingMode = i);
+                setState(() => connectionMode = i);
                 _saveData();
-                if (v2rayStatus.state == 'CONNECTED') {
-                  await flutterV2ray.stopV2Ray();
-                  await Future.delayed(const Duration(milliseconds: 400));
-                  await _startConnection();
-                }
               },
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                padding: const EdgeInsets.symmetric(vertical: 7),
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
-                  color: active ? Colors.white.withOpacity(0.14) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(14),
-                  border: active ? Border.all(color: Colors.white.withOpacity(0.18)) : null,
+                  color: active ? Colors.white.withOpacity(0.15) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   modes[i],
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: active ? Colors.white : Colors.white54,
                   ),
@@ -1345,34 +921,14 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
     );
   }
 
-  Widget _buildGeminiLivingOrb(bool isConnected) {
-    String statusTitle = 'آماده اتصال هوشمند';
-    String statusSub = routingMode == 0
-        ? 'عبور مستقیم سایت‌های بانکی و دامنه .ir'
-        : (routingMode == 1 ? 'عبور ۱۰۰٪ ترافیک از تونل امن' : 'حالت Fragment ضد فیلترینگ فعال است');
-
-    if (isConnecting) {
-      statusTitle = 'در حال ایمن‌سازی تونل...';
-      statusSub = 'برقراری ارتباط رمزنگاری‌شده با سرور';
-    } else if (isConnected) {
-      if (realConnectedDelay == -1) {
-        statusTitle = 'متصل (بدون پاسخ از اینترنت)';
-        statusSub = 'اگر اینترنت کند است، دکمه سوییچ زیر را بزنید';
-      } else {
-        statusTitle = 'اتصال شما کاملاً امن است';
-        statusSub = realConnectedDelay != null
-            ? 'پینگ واقعی تونل: $realConnectedDelay ms • بدون نشت DNS'
-            : 'در حال سنجش کیفیت خط...';
-      }
-    }
-
+  Widget _buildGeminiOrbSection(bool isConnected, ServerItem? activeServer) {
     return Column(
       children: [
         GestureDetector(
           onTap: toggleConnection,
           child: SizedBox(
-            width: 186,
-            height: 186,
+            width: 146,
+            height: 146,
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -1382,8 +938,8 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
                     return Transform.rotate(
                       angle: _auraController.value * 2 * math.pi,
                       child: Container(
-                        width: 174,
-                        height: 174,
+                        width: 138,
+                        height: 138,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: SweepGradient(
@@ -1407,8 +963,8 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
                                       ? const Color(0xFF00F5D4)
                                       : const Color(0xFFA87FFB))
                                   .withOpacity(isConnected ? 0.45 : 0.25),
-                              blurRadius: 34,
-                              spreadRadius: 3,
+                              blurRadius: 28,
+                              spreadRadius: 2,
                             ),
                           ],
                         ),
@@ -1417,12 +973,12 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
                   },
                 ),
                 Container(
-                  width: 154,
-                  height: 154,
+                  width: 120,
+                  height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const RadialGradient(
-                      center: Alignment(-0.35, -0.45),
+                      center: Alignment(-0.3, -0.4),
                       radius: 1.1,
                       colors: [
                         Color(0xFF28314E),
@@ -1432,9 +988,9 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
                     ),
                     border: Border.all(
                       color: isConnected
-                          ? const Color(0xFF00F5D4).withOpacity(0.75)
+                          ? const Color(0xFF00F5D4).withOpacity(0.8)
                           : Colors.white.withOpacity(0.25),
-                      width: 1.6,
+                      width: 1.5,
                     ),
                   ),
                   child: Column(
@@ -1442,8 +998,8 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
                     children: [
                       if (isConnecting)
                         const SizedBox(
-                          width: 40,
-                          height: 40,
+                          width: 34,
+                          height: 34,
                           child: CircularProgressIndicator(
                             strokeWidth: 3,
                             color: Color(0xFFA87FFB),
@@ -1452,18 +1008,18 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
                       else
                         Icon(
                           Icons.power_settings_new_rounded,
-                          size: 48,
+                          size: 42,
                           color: isConnected ? const Color(0xFF00F5D4) : Colors.white,
                         ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
                         isConnecting
-                            ? 'HANDSHAKING'
-                            : (isConnected ? 'PROTECTED' : 'TAP TO CONNECT'),
+                            ? 'CONNECTING'
+                            : (isConnected ? 'CONNECTED' : 'CONNECT'),
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: 9,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
+                          letterSpacing: 1.2,
                           color: isConnected ? const Color(0xFF00F5D4) : Colors.white60,
                         ),
                       ),
@@ -1474,203 +1030,305 @@ class _VisionGlassHomeState extends State<VisionGlassHome>
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         Text(
-          statusTitle,
+          isConnecting
+              ? 'در حال اتصال به سرور...'
+              : (isConnected
+                  ? 'متصل به: ${activeServer?.remark ?? "سرور"}'
+                  : (activeServer != null
+                      ? 'سرور انتخابی: ${activeServer.remark}'
+                      : 'هیچ سروری اضافه نشده است')),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w800,
             color: isConnected ? const Color(0xFF00F5D4) : Colors.white,
           ),
         ),
-        const SizedBox(height: 3),
-        Text(
-          statusSub,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 11.5, color: Colors.white54),
-        ),
-        if (isConnected && realConnectedDelay == -1 && servers.length > 1) ...[
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B90FF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            ),
-            onPressed: switchToNextHealthyServer,
-            icon: const Icon(Icons.skip_next_rounded, size: 18),
-            label: const Text('سوییچ هوشمند به سرور سالم بعدی', style: TextStyle(fontSize: 12)),
-          ),
-        ],
       ],
     );
   }
 
-  Widget _buildSparklineBentoRow(bool isConnected) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildBentoWaveCard(
-            title: 'دانلود زنده',
-            speed: isConnected ? _formatSpeed(v2rayStatus.downloadSpeed) : '0.0 KB/s',
-            color: const Color(0xFF00F5D4),
-            bars: dlHistory,
-            active: isConnected,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildBentoWaveCard(
-            title: 'آپلود زنده',
-            speed: isConnected ? _formatSpeed(v2rayStatus.uploadSpeed) : '0.0 KB/s',
-            color: const Color(0xFFA87FFB),
-            bars: ulHistory,
-            active: isConnected,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBentoWaveCard({
-    required String title,
-    required String speed,
-    required Color color,
-    required List<double> bars,
-    required bool active,
-  }) {
+  Widget _buildTelemetryBar(bool isConnected) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.03)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.13)),
+        color: Colors.white.withOpacity(0.055),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(fontSize: 10.5, color: Colors.white60)),
-              Icon(
-                title.contains('دانلود') ? Icons.south_west_rounded : Icons.north_east_rounded,
-                size: 13,
-                color: color,
+              const Icon(Icons.south_west_rounded, size: 14, color: Color(0xFF00F5D4)),
+              const SizedBox(width: 5),
+              Text(
+                isConnected ? _formatSpeed(v2rayStatus.downloadSpeed) : '0.0 KB/s',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF00F5D4)),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            speed,
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: color),
+          Container(width: 1, height: 18, color: Colors.white12),
+          Row(
+            children: [
+              const Icon(Icons.north_east_rounded, size: 14, color: Color(0xFFA87FFB)),
+              const SizedBox(width: 5),
+              Text(
+                isConnected ? _formatSpeed(v2rayStatus.uploadSpeed) : '0.0 KB/s',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFA87FFB)),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 16,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(bars.length, (i) {
-                final double h = active ? (bars[i] * 16).clamp(3.0, 16.0) : 3.5;
-                return Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: const EdgeInsets.symmetric(horizontal: 1.2),
-                    height: h,
-                    decoration: BoxDecoration(
-                      color: active ? color.withOpacity(0.85) : Colors.white12,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                );
-              }),
-            ),
+          Container(width: 1, height: 18, color: Colors.white12),
+          Row(
+            children: [
+              const Icon(Icons.schedule_rounded, size: 14, color: Colors.white60),
+              const SizedBox(width: 5),
+              Text(
+                isConnected ? v2rayStatus.duration : '00:00:00',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildServerCapsule(ServerItem? currentServer, bool isConnected) {
-    return GestureDetector(
-      onTap: _openGlassServersSheet,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.white.withOpacity(0.09), Colors.white.withOpacity(0.04)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+  // لیست مستقیم و همیشه باز سرورها روی صفحه اصلی برای انتخاب دستی ۱۰۰٪ راحت
+  Widget _buildDirectServerList(bool isConnected) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B0E1A).withOpacity(0.92),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'لیست سرورها (${servers.length}) — روی سرور دلخواه بزنید:',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: Colors.white70),
+                ),
+                Row(
+                  children: [
+                    if (servers.length > 1)
+                      GestureDetector(
+                        onTap: () => pingAllServers(sortAfter: true),
+                        child: const Text(
+                          'مرتب‌سازی پینگ',
+                          style: TextStyle(fontSize: 11, color: Color(0xFFA87FFB), fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    if (servers.isNotEmpty) ...[
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            servers.clear();
+                            selectedIndex = 0;
+                          });
+                          _saveData();
+                        },
+                        child: const Text(
+                          'حذف همه',
+                          style: TextStyle(fontSize: 11, color: Colors.redAccent),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: Colors.white.withOpacity(0.16)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.08),
-                border: Border.all(color: Colors.white.withOpacity(0.18)),
-              ),
-              child: Center(
-                child: Text(
-                  currentServer != null ? _detectFlag(currentServer.remark) : '🌍',
-                  style: const TextStyle(fontSize: 20),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    currentServer != null ? currentServer.remark : 'انتخاب یا افزودن سرور هوشمند',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    currentServer != null
-                        ? '${currentServer.protocol} • زمان: ${isConnected ? v2rayStatus.duration : "00:00:00"}'
-                        : 'لینک را کپی کرده و دکمه + بالا را بزنید',
-                    style: const TextStyle(fontSize: 10.5, color: Colors.white54),
-                  ),
-                ],
-              ),
-            ),
-            if (currentServer != null) ...[
-              _buildSignalBars(currentServer.ping),
-              const SizedBox(width: 8),
-              if (currentServer.ping > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00F5D4).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF00F5D4).withOpacity(0.35)),
-                  ),
-                  child: Text(
-                    '${currentServer.ping} ms',
-                    style: const TextStyle(
-                      color: Color(0xFF00F5D4),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
+          const Divider(color: Colors.white10, height: 1),
+          Expanded(
+            child: servers.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.add_link_rounded, size: 42, color: Colors.white24),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'هنوز هیچ کانفیگی اضافه نکرده‌اید.',
+                            style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4B90FF),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: _importFromClipboardDirect,
+                            icon: const Icon(Icons.content_paste_rounded, size: 18),
+                            label: const Text('چسباندن کانفیگ یا اشتراک از کلیپ‌بورد'),
+                          ),
+                        ],
+                      ),
                     ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    itemCount: servers.length,
+                    itemBuilder: (context, index) {
+                      final s = servers[index];
+                      final bool isSelected = index == selectedIndex;
+
+                      Color pColor = const Color(0xFF00F5D4);
+                      if (s.ping > 280) pColor = const Color(0xFFFBBF24);
+                      if (s.ping <= 0 || s.ping > 650) pColor = const Color(0xFFF43F5E);
+
+                      return GestureDetector(
+                        onTap: () => selectServerManually(index),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          margin: const EdgeInsets.only(bottom: 9),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: isSelected
+                                ? LinearGradient(
+                                    colors: [
+                                      const Color(0xFF4B90FF).withOpacity(0.28),
+                                      const Color(0xFFA87FFB).withOpacity(0.20),
+                                    ],
+                                  )
+                                : null,
+                            color: isSelected ? null : Colors.white.withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: isSelected
+                                  ? (isConnected ? const Color(0xFF00F5D4) : const Color(0xFFA87FFB))
+                                  : Colors.white.withOpacity(0.07),
+                              width: isSelected ? 1.6 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              // دکمه رادیویی واضح برای نشان دادن سرور انتخاب‌شده
+                              Icon(
+                                isSelected
+                                    ? Icons.check_circle_rounded
+                                    : Icons.radio_button_unchecked_rounded,
+                                color: isSelected
+                                    ? (isConnected ? const Color(0xFF00F5D4) : const Color(0xFFA87FFB))
+                                    : Colors.white30,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(_detectFlag(s.remark), style: const TextStyle(fontSize: 18)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      s.remark,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                        fontSize: 13,
+                                        color: isSelected ? Colors.white : Colors.white70,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white10,
+                                            borderRadius: BorderRadius.circular(5),
+                                          ),
+                                          child: Text(
+                                            s.protocol,
+                                            style: const TextStyle(fontSize: 9.5, color: Color(0xFFA87FFB)),
+                                          ),
+                                        ),
+                                        if (isSelected) ...[
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            isConnected ? '● متصل' : '✓ انتخاب شده',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: isConnected
+                                                  ? const Color(0xFF00F5D4)
+                                                  : const Color(0xFFA87FFB),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // دکمه تست پینگ تکی
+                              GestureDetector(
+                                onTap: () => pingSingleServer(s),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black26,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: s.testing
+                                      ? const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFFA87FFB),
+                                          ),
+                                        )
+                                      : Text(
+                                          s.ping > 0
+                                              ? '${s.ping} ms'
+                                              : (s.ping == -2 ? 'Timeout' : 'تست پینگ'),
+                                          style: TextStyle(
+                                            color: s.ping > 0 ? pColor : Colors.white54,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    servers.removeAt(index);
+                                    if (selectedIndex >= servers.length) {
+                                      selectedIndex = math.max(0, servers.length - 1);
+                                    }
+                                  });
+                                  _saveData();
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4.0),
+                                  child: Icon(Icons.close_rounded, size: 18, color: Colors.white30),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-            ],
-            const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white70),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
