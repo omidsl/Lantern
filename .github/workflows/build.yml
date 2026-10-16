@@ -24,7 +24,7 @@ jobs:
           flutter-version: '3.22.3'
           channel: 'stable'
 
-      - name: Generate Android Platform Files & Permissions
+      - name: Configure Android VPN Service & Permissions
         run: |
           mv pubspec.yaml pubspec.yaml.bak
           mv lib/main.dart main.dart.bak
@@ -32,14 +32,19 @@ jobs:
           mv pubspec.yaml.bak pubspec.yaml
           mv main.dart.bak lib/main.dart
           
+          # تنظیم نسخه SDK اندروید و بسته‌بندی فایل‌های باینری هسته Xray (.so)
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle
           sed -i 's/android {/android {\n    packagingOptions {\n        jniLibs {\n            useLegacyPackaging true\n        }\n    }/g' android/app/build.gradle
           
+          # تزریق کامل مجوزهای حیاتی VPN برای اندروید ۱۰ تا ۱۴
           sed -i '/<application/i <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<application/i <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/i <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/i <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED"/>' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/i <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<application/i <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' android/app/src/main/AndroidManifest.xml
-          sed -i 's/<application/<application android:extractNativeLibs="true" android:usesCleartextTraffic="true" android:allowBackup="false"/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<application/<application android:extractNativeLibs="true" android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
 
       - name: Install Dependencies & Build APK
         run: |
