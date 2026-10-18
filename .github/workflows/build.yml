@@ -1,4 +1,4 @@
-name: Build Lantern APK
+name: Build Lantern Desktop & Android
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ==================== ۱. ساخت نسخه اندروید (APK) ====================
   build-android:
     runs-on: ubuntu-latest
     steps:
@@ -32,12 +33,10 @@ jobs:
           mv pubspec.yaml.bak pubspec.yaml
           mv main.dart.bak lib/main.dart
           
-          # تنظیم نسخه SDK اندروید و بسته‌بندی فایل‌های باینری هسته Xray (.so)
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle
           sed -i 's/android {/android {\n    packagingOptions {\n        jniLibs {\n            useLegacyPackaging true\n        }\n    }/g' android/app/build.gradle
           
-          # تزریق کامل مجوزهای حیاتی VPN برای اندروید ۱۰ تا ۱۴
           sed -i '/<application/i <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<application/i <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<application/i <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>' android/app/src/main/AndroidManifest.xml
@@ -46,13 +45,51 @@ jobs:
           sed -i '/<application/i <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' android/app/src/main/AndroidManifest.xml
           sed -i 's/<application/<application android:extractNativeLibs="true" android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
 
-      - name: Install Dependencies & Build APK
+      - name: Build Android APK
         run: |
           flutter pub get
           flutter build apk --release --no-tree-shake-icons
 
-      - name: Upload Ready APK
+      - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: Lantern-VPN-APK
+          name: Lantern-Android-APK
           path: build/app/outputs/flutter-apk/app-release.apk
+
+  # ==================== ۲. ساخت نسخه ویندوز 3D به همراه هسته Xray.exe ====================
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter on Windows
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.3'
+          channel: 'stable'
+
+      - name: Generate Windows Desktop Runner & Build EXE
+        shell: powershell
+        run: |
+          Move-Item pubspec.yaml pubspec.yaml.bak
+          Move-Item lib/main.dart main.dart.bak
+          flutter config --enable-windows-desktop
+          flutter create --platforms=windows --org com.lanternvpn.client --project-name lantern_vpn .
+          Move-Item -Force pubspec.yaml.bak pubspec.yaml
+          Move-Item -Force main.dart.bak lib/main.dart
+          flutter pub get
+          flutter build windows --release --no-tree-shake-icons
+
+      - name: Bundle Official Xray-Core Engine for Windows
+        shell: powershell
+        run: |
+          $releasePath = "build/windows/x64/runner/Release"
+          Invoke-WebRequest -Uri "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-windows-64.zip" -OutFile "xray.zip"
+          Expand-Archive -Path "xray.zip" -DestinationPath "$releasePath" -Force
+
+      - name: Upload Ready Windows Portable App
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lantern-Windows-3D-Portable
+          path: build/windows/x64/runner/Release/*
