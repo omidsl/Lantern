@@ -69,7 +69,7 @@ jobs:
           flutter-version: '3.22.3'
           channel: 'stable'
 
-      - name: Generate Windows Desktop Runner & Build EXE
+      - name: Prepare Windows Native Source & Build EXE
         shell: powershell
         run: |
           Move-Item pubspec.yaml pubspec.yaml.bak
@@ -78,6 +78,36 @@ jobs:
           flutter create --platforms=windows --org com.lanternvpn.client --project-name lantern_vpn .
           Move-Item -Force pubspec.yaml.bak pubspec.yaml
           Move-Item -Force main.dart.bak lib/main.dart
+
+          # حذف وابستگی مخصوص اندروید (flutter_v2ray) در بیلد ویندوز و جایگزینی با شبیه‌ساز سبک داخلی
+          (Get-Content pubspec.yaml) | Where-Object { $_ -notmatch 'flutter_v2ray' } | Set-Content pubspec.yaml
+
+          $stubCode = @"
+          class V2RayStatus {
+            final String state;
+            final String duration;
+            final int downloadSpeed;
+            final int uploadSpeed;
+            V2RayStatus({this.state = 'DISCONNECTED', this.duration = '00:00:00', this.downloadSpeed = 0, this.uploadSpeed = 0});
+          }
+          class V2RayURL {
+            final String remark;
+            V2RayURL(this.remark);
+            String getFullConfiguration() => '{}';
+          }
+          class FlutterV2ray {
+            final void Function(V2RayStatus)? onStatusChanged;
+            FlutterV2ray({this.onStatusChanged});
+            Future<void> initializeV2Ray() async {}
+            Future<bool> requestPermission() async => true;
+            Future<void> startV2Ray({required String remark, required String config, List<String>? bypassSubnets}) async {}
+            Future<void> stopV2Ray() async {}
+            static V2RayURL parseFromURL(String url) => V2RayURL('Server');
+          }
+          "@
+          Set-Content -Path "lib/v2ray_win_stub.dart" -Value $stubCode -Encoding UTF8
+          (Get-Content "lib/main.dart" -Raw).Replace("package:flutter_v2ray/flutter_v2ray.dart", "v2ray_win_stub.dart") | Set-Content "lib/main.dart" -Encoding UTF8
+
           flutter pub get
           flutter build windows --release --no-tree-shake-icons
 
