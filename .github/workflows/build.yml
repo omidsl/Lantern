@@ -1,4 +1,4 @@
-name: Build Lantern Desktop & Android
+name: Build Lantern Android 3D Luxury APK
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ==================== ۱. ساخت نسخه اندروید (APK) ====================
   build-android:
     runs-on: ubuntu-latest
     steps:
@@ -25,11 +24,11 @@ jobs:
           flutter-version: '3.22.3'
           channel: 'stable'
 
-      - name: Configure Android VPN Service & Permissions
+      - name: Configure Android Project, Permissions & Custom Lantern Icon
         run: |
           mv pubspec.yaml pubspec.yaml.bak
           mv lib/main.dart main.dart.bak
-          flutter create --org com.lanternvpn.client --project-name lantern_vpn .
+          flutter create --platforms=android --org com.lanternvpn.client --project-name lantern_vpn .
           mv pubspec.yaml.bak pubspec.yaml
           mv main.dart.bak lib/main.dart
           
@@ -43,83 +42,16 @@ jobs:
           sed -i '/<application/i <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<application/i <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<application/i <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="lantern_vpn"/android:label="Lantern 3D"/g' android/app/src/main/AndroidManifest.xml
           sed -i 's/<application/<application android:extractNativeLibs="true" android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
 
-      - name: Build Android APK
+      - name: Build Release APK
         run: |
           flutter pub get
           flutter build apk --release --no-tree-shake-icons
 
-      - name: Upload Android APK
+      - name: Upload Lantern Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: Lantern-Android-APK
+          name: Lantern-Android-3D-Luxury-APK
           path: build/app/outputs/flutter-apk/app-release.apk
-
-  # ==================== ۲. ساخت نسخه ویندوز 3D به همراه هسته Xray.exe ====================
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout Source
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter on Windows
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.3'
-          channel: 'stable'
-
-      - name: Prepare Windows Native Source & Build EXE
-        shell: powershell
-        run: |
-          Move-Item pubspec.yaml pubspec.yaml.bak
-          Move-Item lib/main.dart main.dart.bak
-          flutter config --enable-windows-desktop
-          flutter create --platforms=windows --org com.lanternvpn.client --project-name lantern_vpn .
-          Move-Item -Force pubspec.yaml.bak pubspec.yaml
-          Move-Item -Force main.dart.bak lib/main.dart
-
-          # حذف وابستگی مخصوص اندروید (flutter_v2ray) در بیلد ویندوز و جایگزینی با شبیه‌ساز سبک داخلی
-          (Get-Content pubspec.yaml) | Where-Object { $_ -notmatch 'flutter_v2ray' } | Set-Content pubspec.yaml
-
-          $stubCode = @"
-          class V2RayStatus {
-            final String state;
-            final String duration;
-            final int downloadSpeed;
-            final int uploadSpeed;
-            V2RayStatus({this.state = 'DISCONNECTED', this.duration = '00:00:00', this.downloadSpeed = 0, this.uploadSpeed = 0});
-          }
-          class V2RayURL {
-            final String remark;
-            V2RayURL(this.remark);
-            String getFullConfiguration() => '{}';
-          }
-          class FlutterV2ray {
-            final void Function(V2RayStatus)? onStatusChanged;
-            FlutterV2ray({this.onStatusChanged});
-            Future<void> initializeV2Ray() async {}
-            Future<bool> requestPermission() async => true;
-            Future<void> startV2Ray({required String remark, required String config, List<String>? bypassSubnets}) async {}
-            Future<void> stopV2Ray() async {}
-            static V2RayURL parseFromURL(String url) => V2RayURL('Server');
-          }
-          "@
-          Set-Content -Path "lib/v2ray_win_stub.dart" -Value $stubCode -Encoding UTF8
-          (Get-Content "lib/main.dart" -Raw).Replace("package:flutter_v2ray/flutter_v2ray.dart", "v2ray_win_stub.dart") | Set-Content "lib/main.dart" -Encoding UTF8
-
-          flutter pub get
-          flutter build windows --release --no-tree-shake-icons
-
-      - name: Bundle Official Xray-Core Engine for Windows
-        shell: powershell
-        run: |
-          $releasePath = "build/windows/x64/runner/Release"
-          Invoke-WebRequest -Uri "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-windows-64.zip" -OutFile "xray.zip"
-          Expand-Archive -Path "xray.zip" -DestinationPath "$releasePath" -Force
-
-      - name: Upload Ready Windows Portable App
-        uses: actions/upload-artifact@v4
-        with:
-          name: Lantern-Windows-3D-Portable
-          path: build/windows/x64/runner/Release/*
