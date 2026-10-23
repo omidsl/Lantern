@@ -10,70 +10,70 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF060913),
+      systemNavigationBarColor: Color(0xFF040814),
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
-  runApp(const LanternAndroidApp());
+  runApp(const LanternSecureNetApp());
 }
 
-class LanternAndroidApp extends StatelessWidget {
-  const LanternAndroidApp({super.key});
+class LanternSecureNetApp extends StatelessWidget {
+  const LanternSecureNetApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Lantern 3D Spatial VPN',
+      title: 'LanternNet VPN',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF040711),
+        scaffoldBackgroundColor: const Color(0xFF030712),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF0066FF),
+          primary: Color(0xFF00A3FF),
           secondary: Color(0xFF00F5D4),
-          surface: Color(0xFF0D1322),
+          surface: Color(0xFF0A1224),
         ),
       ),
-      home: const LanternQuickSplash(),
+      home: const CyberSplashScreen(),
     );
   }
 }
 
-// ==================== ۱. استارت مدرن، شیک و کوتاه (۱.۴ ثانیه) ====================
-class LanternQuickSplash extends StatefulWidget {
-  const LanternQuickSplash({super.key});
+// ==================== ۱. صفحه استارت ۱.۲ ثانیه‌ای در مرکز مطلق صفحه ====================
+class CyberSplashScreen extends StatefulWidget {
+  const CyberSplashScreen({super.key});
 
   @override
-  State<LanternQuickSplash> createState() => _LanternQuickSplashState();
+  State<CyberSplashScreen> createState() => _CyberSplashScreenState();
 }
 
-class _LanternQuickSplashState extends State<LanternQuickSplash>
+class _CyberSplashScreenState extends State<CyberSplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  late final Animation<double> _scaleAnim;
-  late final Animation<double> _fadeAnim;
+  late final Animation<double> _scale;
+  late final Animation<double> _opacity;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1100),
+      duration: const Duration(milliseconds: 900),
     );
-    _scaleAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack);
-    _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
-
+    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack);
+    _opacity = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
 
-    Timer(const Duration(milliseconds: 1450), () {
+    Timer(const Duration(milliseconds: 1250), () {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 420),
-          pageBuilder: (_, __, ___) => const LanternMobileHome(),
+          transitionDuration: const Duration(milliseconds: 350),
+          pageBuilder: (_, __, ___) => const SecureNetMainScreen(),
           transitionsBuilder: (_, anim, __, child) =>
               FadeTransition(opacity: anim, child: child),
         ),
@@ -90,225 +90,495 @@ class _LanternQuickSplashState extends State<LanternQuickSplash>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF040711),
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          // هاله نوری پس‌زمینه با همان رنگ‌های اصلی
-          Container(
-            width: 280,
-            height: 280,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  const Color(0xFF0066FF).withOpacity(0.28),
-                  const Color(0xFFA87FFB).withOpacity(0.14),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-          FadeTransition(
-            opacity: _fadeAnim,
+      backgroundColor: const Color(0xFF030712),
+      body: SizedBox.expand(
+        child: Center(
+          child: FadeTransition(
+            opacity: _opacity,
             child: ScaleTransition(
-              scale: _scaleAnim,
+              scale: _scale,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // لوگوی فانوس سه‌بعدی درخشان
                   Container(
                     width: 96,
                     height: 96,
-                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF0066FF),
-                          Color(0xFFA87FFB),
-                          Color(0xFF00F5D4),
-                        ],
-                      ),
+                      shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0066FF).withOpacity(0.55),
-                          blurRadius: 32,
-                          spreadRadius: 3,
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFF00F5D4).withOpacity(0.35),
-                          blurRadius: 18,
+                          color: const Color(0xFF0099FF).withOpacity(0.45),
+                          blurRadius: 45,
+                          spreadRadius: 8,
                         ),
                       ],
                     ),
                     child: CustomPaint(
-                      painter: LanternLogoPainter(),
+                      size: const Size(96, 96),
+                      painter: ShieldLightningLogoPainter(),
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
-                    'LANTERN 3D',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 3.0,
-                      color: Colors.white,
+                  RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Lantern',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        TextSpan(
+                          text: 'Net',
+                          style: TextStyle(color: Color(0xFF00A3FF)),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 6),
                   const Text(
-                    'SPATIAL QUANTUM TUNNEL',
+                    'Your Freedom, Our Priority',
                     style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2.2,
-                      color: Color(0xFF00F5D4),
+                      fontSize: 12,
+                      color: Color(0xFF6482AD),
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.6,
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ==================== ۲. نقاش لوگوی «فانوس زیبا» با حفظ رنگ‌بندی اصلی ====================
-class LanternLogoPainter extends CustomPainter {
+// ==================== ۲. نقاش لوگوی سپر نئونی با صاعقه (دقیقاً مطابق عکس) ====================
+class ShieldLightningLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
+    final w = size.width;
+    final h = size.height;
 
-    final Paint strokePaint = Paint()
-      ..color = Colors.white
+    final shieldPath = Path()
+      ..moveTo(w * 0.5, h * 0.06)
+      ..lineTo(w * 0.88, h * 0.20)
+      ..quadraticBezierTo(w * 0.88, h * 0.64, w * 0.5, h * 0.94)
+      ..quadraticBezierTo(w * 0.12, h * 0.64, w * 0.12, h * 0.20)
+      ..close();
+
+    // لایه داخلی سرمه‌ای تیره
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF0B2246), Color(0xFF040B1A)],
+      ).createShader(Offset.zero & size);
+    canvas.drawPath(shieldPath, bgPaint);
+
+    // حاشیه نئونی آبی درخشان
+    final borderPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.065
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+      ..strokeWidth = w * 0.075
+      ..strokeJoin = StrokeJoin.round
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF00E5FF), Color(0xFF0077FF), Color(0xFF0044CC)],
+      ).createShader(Offset.zero & size);
+    canvas.drawPath(shieldPath, borderPaint);
 
-    final Paint glowFill = Paint()
-      ..shader = const RadialGradient(
-        colors: [
-          Color(0xFFFFFFFF),
-          Color(0xFF00F5D4),
-          Color(0x0000F5D4),
-        ],
-      ).createShader(Rect.fromCircle(center: Offset(w * 0.5, h * 0.54), radius: w * 0.36));
-
-    // ۱. حلقه آویز بالای فانوس
-    canvas.drawArc(
-      Rect.fromCenter(center: Offset(w * 0.5, h * 0.14), width: w * 0.24, height: h * 0.16),
-      math.pi,
-      math.pi,
-      false,
-      strokePaint,
-    );
-
-    // ۲. سقف گنبدی فانوس (Cap)
-    final Path roof = Path()
-      ..moveTo(w * 0.24, h * 0.27)
-      ..lineTo(w * 0.76, h * 0.27)
-      ..lineTo(w * 0.64, h * 0.17)
-      ..lineTo(w * 0.36, h * 0.17)
+    // صاعقه درخشان وسط سپر
+    final boltPath = Path()
+      ..moveTo(w * 0.55, h * 0.25)
+      ..lineTo(w * 0.34, h * 0.53)
+      ..lineTo(w * 0.49, h * 0.53)
+      ..lineTo(w * 0.43, h * 0.76)
+      ..lineTo(w * 0.66, h * 0.46)
+      ..lineTo(w * 0.51, h * 0.46)
       ..close();
-    canvas.drawPath(roof, strokePaint);
 
-    // ۳. بدنه بلورین چندوجهی فانوس (Crystal Chamber)
-    final Path body = Path()
-      ..moveTo(w * 0.20, h * 0.32)
-      ..lineTo(w * 0.80, h * 0.32)
-      ..lineTo(w * 0.70, h * 0.77)
-      ..lineTo(w * 0.30, h * 0.77)
-      ..close();
-    canvas.drawPath(body, strokePaint);
-
-    // ستون‌های نوری داخل فانوس
-    final Paint ribPaint = Paint()
-      ..color = Colors.white.withOpacity(0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.035;
-    canvas.drawLine(Offset(w * 0.38, h * 0.32), Offset(w * 0.41, h * 0.77), ribPaint);
-    canvas.drawLine(Offset(w * 0.62, h * 0.32), Offset(w * 0.59, h * 0.77), ribPaint);
-
-    // ۴. شعله و هسته نوری درخشان در قلب فانوس
-    canvas.drawCircle(Offset(w * 0.5, h * 0.54), w * 0.30, glowFill);
-    final Path flame = Path()
-      ..moveTo(w * 0.5, h * 0.40)
-      ..quadraticBezierTo(w * 0.63, h * 0.54, w * 0.5, h * 0.66)
-      ..quadraticBezierTo(w * 0.37, h * 0.54, w * 0.5, h * 0.40)
-      ..close();
-    canvas.drawPath(flame, Paint()..color = Colors.white);
-
-    // ۵. پایه زیرین فانوس (Base)
-    canvas.drawLine(Offset(w * 0.25, h * 0.85), Offset(w * 0.75, h * 0.85), strokePaint);
-    canvas.drawLine(Offset(w * 0.36, h * 0.92), Offset(w * 0.64, h * 0.92), strokePaint);
+    final boltPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.white, Color(0xFF00E5FF), Color(0xFF0088FF)],
+      ).createShader(Offset.zero & size);
+    canvas.drawPath(boltPath, boltPaint);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// ==================== پالت‌های تم نوری (Neon Accent Themes) ====================
-class NeonThemePalette {
-  final String id;
-  final String nameFa;
-  final String nameEn;
-  final Color primary;
-  final Color secondary;
-  final Color glow;
+// ==================== ۳. نقاش کره زمین شبکه‌ای و حلقه‌های مداری (Cyber Globe) ====================
+class CyberGlobePainter extends CustomPainter {
+  final double rotation;
+  final bool isConnected;
 
-  const NeonThemePalette({
-    required this.id,
-    required this.nameFa,
-    required this.nameEn,
-    required this.primary,
-    required this.secondary,
-    required this.glow,
-  });
+  CyberGlobePainter({required this.rotation, required this.isConnected});
 
-  static const List<NeonThemePalette> palettes = [
-    NeonThemePalette(
-      id: 'cyber_blue',
-      nameFa: 'آبی سایبری (Cyber Blue)',
-      nameEn: 'Cyber Blue',
-      primary: Color(0xFF0066FF),
-      secondary: Color(0xFF00F5D4),
-      glow: Color(0xFFA87FFB),
-    ),
-    NeonThemePalette(
-      id: 'arcane_purple',
-      nameFa: 'بنفش آرکین (Arcane Purple)',
-      nameEn: 'Arcane Purple',
-      primary: Color(0xFF8B5CF6),
-      secondary: Color(0xFFEC4899),
-      glow: Color(0xFFC084FC),
-    ),
-    NeonThemePalette(
-      id: 'emerald_neon',
-      nameFa: 'سبز زمردی (Emerald Neon)',
-      nameEn: 'Emerald Neon',
-      primary: Color(0xFF10B981),
-      secondary: Color(0xFF00F5D4),
-      glow: Color(0xFF34D399),
-    ),
-    NeonThemePalette(
-      id: 'dark_gold',
-      nameFa: 'طلایی لوکس (Dark Gold)',
-      nameEn: 'Dark Luxury Gold',
-      primary: Color(0xFFF59E0B),
-      secondary: Color(0xFFFDE047),
-      glow: Color(0xFFFBBF24),
-    ),
-  ];
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width * 0.42;
+
+    final Color mainColor =
+        isConnected ? const Color(0xFF00E5FF) : const Color(0xFF0088FF);
+
+    // ۱. هاله کهکشانی پشت کره
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          mainColor.withOpacity(isConnected ? 0.32 : 0.22),
+          const Color(0xFF003380).withOpacity(0.12),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius * 1.45));
+    canvas.drawCircle(center, radius * 1.45, glowPaint);
+
+    // ۲. بدنه کروی تیره با نور لبه‌ای (Horizon Rim Light مثل عکس دوم)
+    final spherePaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(0.0, -0.35),
+        radius: 0.95,
+        colors: [
+          const Color(0xFF0D2854).withOpacity(0.85),
+          const Color(0xFF06132C).withOpacity(0.92),
+          const Color(0xFF030814),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawCircle(center, radius, spherePaint);
+
+    // کمان درخشان افق در بالای کره (مثل عکس دوم)
+    final rimPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          mainColor.withOpacity(0.85),
+          mainColor.withOpacity(0.15),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawCircle(center, radius, rimPaint);
+
+    // ۳. خطوط شبکه کروی (Latitude & Longitude Mesh مثل عکس اول)
+    canvas.save();
+    canvas.clipPath(
+        Path()..addOval(Rect.fromCircle(center: center, radius: radius)));
+
+    final meshPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..color = mainColor.withOpacity(0.22);
+
+    // مدارهای افقی
+    for (int i = -2; i <= 2; i++) {
+      final dy = i * (radius * 0.32);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(center.dx, center.dy + dy),
+          width: radius * 2,
+          height: radius * 0.45,
+        ),
+        meshPaint,
+      );
+    }
+
+    // نصف‌النهارهای چرخان
+    for (int i = 0; i < 6; i++) {
+      final angle = (rotation * math.pi * 2) + (i * math.pi / 6);
+      final wFactor = math.sin(angle).abs().clamp(0.12, 1.0);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: center,
+          width: radius * 2 * wFactor,
+          height: radius * 2,
+        ),
+        meshPaint,
+      );
+    }
+
+    // نقاط نوری شهرها روی کره (City Nodes مثل عکس اول)
+    final rnd = math.Random(42);
+    final nodePaint = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 28; i++) {
+      final a = rnd.nextDouble() * math.pi * 2 + (rotation * 0.8);
+      final r = rnd.nextDouble() * radius * 0.85;
+      final nx = center.dx + math.cos(a) * r;
+      final ny = center.dy + math.sin(a) * (r * 0.75);
+      final isGold = i % 5 == 0;
+      nodePaint.color = isGold
+          ? const Color(0xFFFFB74D).withOpacity(0.75)
+          : mainColor.withOpacity(0.75);
+      canvas.drawCircle(Offset(nx, ny), isGold ? 2.2 : 1.5, nodePaint);
+    }
+    canvas.restore();
+
+    // ۴. حلقه‌های مداری فضایی دور کره (Orbital Rings مثل عکس اول)
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(-0.22);
+    final orbitPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..shader = SweepGradient(
+        colors: [
+          Colors.transparent,
+          mainColor.withOpacity(0.65),
+          const Color(0xFFFFB74D).withOpacity(0.5),
+          Colors.transparent,
+        ],
+      ).createShader(
+          Rect.fromCenter(center: Offset.zero, width: radius * 2.5, height: radius * 0.85));
+    canvas.drawOval(
+      Rect.fromCenter(
+          center: Offset.zero, width: radius * 2.45, height: radius * 0.78),
+      orbitPaint,
+    );
+    canvas.restore();
+
+    // ۵. پایه سکوی نوری زیر کره (Pedestal Rings مثل عکس اول)
+    final baseCenter = Offset(center.dx, center.dy + radius * 0.96);
+    final basePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..color = mainColor.withOpacity(0.45);
+    canvas.drawOval(
+      Rect.fromCenter(
+          center: baseCenter, width: radius * 1.9, height: radius * 0.26),
+      basePaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+          center: baseCenter, width: radius * 1.4, height: radius * 0.16),
+      basePaint..color = mainColor.withOpacity(0.75),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CyberGlobePainter oldDelegate) =>
+      oldDelegate.rotation != rotation ||
+      oldDelegate.isConnected != isConnected;
 }
 
-// ==================== مدل اشتراک (Subscription Group) ====================
+// ==================== ۴. نقاش پرچم دایره‌ای کشورها (Circular Glossy Flags) ====================
+class CircularFlagWidget extends StatelessWidget {
+  final String name;
+  final double size;
+
+  const CircularFlagWidget({super.key, required this.name, this.size = 36});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withOpacity(0.28), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.45),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: CustomPaint(
+          size: Size(size, size),
+          painter: FlagVectorPainter(name),
+        ),
+      ),
+    );
+  }
+}
+
+class FlagVectorPainter extends CustomPainter {
+  final String rawName;
+  FlagVectorPainter(this.rawName);
+
+  static String detectCountryCode(String s) {
+    final up = s.toUpperCase();
+    if (up.contains('USA') || up.contains('UNITED STATES') || up.contains(' US') || up.startsWith('US') || s.contains('آمریکا') || s.contains('امریکا') || up.contains('NEW YORK') || up.contains('WASHINGTON')) return 'us';
+    if (up.contains('GERMANY') || up.contains(' DE') || up.startsWith('DE') || s.contains('آلمان') || s.contains('المان') || up.contains('FRANKFURT')) return 'de';
+    if (up.contains('UK') || up.contains('GB') || up.contains('BRITAIN') || up.contains('ENGLAND') || up.contains('LONDON') || s.contains('انگلیس')) return 'gb';
+    if (up.contains('NETHERLANDS') || up.contains(' NL') || up.startsWith('NL') || s.contains('هلند') || up.contains('AMSTERDAM')) return 'nl';
+    if (up.contains('FRANCE') || up.contains(' FR') || up.startsWith('FR') || s.contains('فرانسه') || up.contains('PARIS')) return 'fr';
+    if (up.contains('CANADA') || up.contains(' CA') || s.contains('کانادا') || up.contains('TORONTO')) return 'ca';
+    if (up.contains('JAPAN') || up.contains(' JP') || s.contains('ژاپن') || up.contains('TOKYO')) return 'jp';
+    if (up.contains('SWEDEN') || up.contains(' SE') || up.startsWith('SE') || s.contains('سوئد')) return 'se';
+    if (up.contains('FINLAND') || up.contains(' FI') || up.startsWith('FI') || s.contains('فنلاند')) return 'fi';
+    if (up.contains('TURKEY') || up.contains(' TR') || up.startsWith('TR') || s.contains('ترکیه') || up.contains('ISTANBUL')) return 'tr';
+    if (up.contains('UAE') || up.contains('EMIRATES') || up.contains('DUBAI') || up.contains(' AE') || s.contains('امارات') || s.contains('دبی')) return 'ae';
+    if (up.contains('SWISS') || up.contains('SWITZERLAND') || up.contains(' CH') || s.contains('سوئیس')) return 'ch';
+    if (up.contains('ROMANIA') || up.contains(' RO') || up.startsWith('RO') || s.contains('رومانی')) return 'ro';
+    if (up.contains('INDIA') || up.contains(' IN') || up.startsWith('IN') || s.contains('هند')) return 'in';
+    if (up.contains('EGYPT') || up.contains(' EG') || up.startsWith('EG') || s.contains('مصر')) return 'eg';
+    if (up.contains('BULGARIA') || up.contains(' BG') || up.startsWith('BG') || s.contains('بلغارستان')) return 'bg';
+    if (up.contains('RUSSIA') || up.contains(' RU') || s.contains('روسیه')) return 'ru';
+    if (up.contains('ITALY') || up.contains(' IT') || s.contains('ایتالیا')) return 'it';
+    if (up.contains('SPAIN') || up.contains(' ES') || s.contains('اسپانیا')) return 'es';
+    if (up.contains('POLAND') || up.contains(' PL') || s.contains('لهستان')) return 'pl';
+    if (up.contains('AUSTRIA') || up.contains(' AT') || s.contains('اتریش')) return 'at';
+    if (up.contains('SINGAPORE') || up.contains(' SG') || s.contains('سنگاپور')) return 'sg';
+    return 'global';
+  }
+
+  void _h3(Canvas c, Size s, Color c1, Color c2, Color c3) {
+    final p = Paint();
+    p.color = c1; c.drawRect(Rect.fromLTWH(0, 0, s.width, s.height / 3), p);
+    p.color = c2; c.drawRect(Rect.fromLTWH(0, s.height / 3, s.width, s.height / 3), p);
+    p.color = c3; c.drawRect(Rect.fromLTWH(0, s.height * 2 / 3, s.width, s.height / 3), p);
+  }
+
+  void _v3(Canvas c, Size s, Color c1, Color c2, Color c3) {
+    final p = Paint();
+    p.color = c1; c.drawRect(Rect.fromLTWH(0, 0, s.width / 3, s.height), p);
+    p.color = c2; c.drawRect(Rect.fromLTWH(s.width / 3, 0, s.width / 3, s.height), p);
+    p.color = c3; c.drawRect(Rect.fromLTWH(s.width * 2 / 3, 0, s.width / 3, s.height), p);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final code = detectCountryCode(rawName);
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    switch (code) {
+      case 'us':
+        paint.color = const Color(0xFFBF0A30);
+        canvas.drawRect(Offset.zero & size, paint);
+        paint.color = Colors.white;
+        for (int i = 1; i < 9; i += 2) {
+          canvas.drawRect(Rect.fromLTWH(0, i * size.height / 9, size.width, size.height / 9), paint);
+        }
+        paint.color = const Color(0xFF002868);
+        canvas.drawRect(Rect.fromLTWH(0, 0, size.width * 0.5, size.height * 0.55), paint);
+        break;
+      case 'de':
+        _h3(canvas, size, const Color(0xFF191919), const Color(0xFFDD0000), const Color(0xFFFFCE00));
+        break;
+      case 'gb':
+        paint.color = const Color(0xFF012169);
+        canvas.drawRect(Offset.zero & size, paint);
+        final d = Paint()..color = Colors.white..strokeWidth = size.width * 0.14;
+        canvas.drawLine(Offset.zero, Offset(size.width, size.height), d);
+        canvas.drawLine(Offset(size.width, 0), Offset(0, size.height), d);
+        paint.color = Colors.white;
+        canvas.drawRect(Rect.fromLTWH(0, size.height * 0.36, size.width, size.height * 0.28), paint);
+        canvas.drawRect(Rect.fromLTWH(size.width * 0.36, 0, size.width * 0.28, size.height), paint);
+        paint.color = const Color(0xFFC8102E);
+        canvas.drawRect(Rect.fromLTWH(0, size.height * 0.42, size.width, size.height * 0.16), paint);
+        canvas.drawRect(Rect.fromLTWH(size.width * 0.42, 0, size.width * 0.16, size.height), paint);
+        break;
+      case 'nl':
+        _h3(canvas, size, const Color(0xFFAE1C28), Colors.white, const Color(0xFF21468B));
+        break;
+      case 'fr':
+        _v3(canvas, size, const Color(0xFF002395), Colors.white, const Color(0xFFED2939));
+        break;
+      case 'ca':
+        _v3(canvas, size, const Color(0xFFFF0000), Colors.white, const Color(0xFFFF0000));
+        paint.color = const Color(0xFFFF0000);
+        canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width * 0.16, paint);
+        break;
+      case 'jp':
+        paint.color = Colors.white;
+        canvas.drawRect(Offset.zero & size, paint);
+        paint.color = const Color(0xFFBC002D);
+        canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width * 0.28, paint);
+        break;
+      case 'se':
+        paint.color = const Color(0xFF006AA7);
+        canvas.drawRect(Offset.zero & size, paint);
+        paint.color = const Color(0xFFFECC02);
+        canvas.drawRect(Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.2), paint);
+        canvas.drawRect(Rect.fromLTWH(size.width * 0.32, 0, size.width * 0.16, size.height), paint);
+        break;
+      case 'fi':
+        paint.color = Colors.white;
+        canvas.drawRect(Offset.zero & size, paint);
+        paint.color = const Color(0xFF003580);
+        canvas.drawRect(Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.2), paint);
+        canvas.drawRect(Rect.fromLTWH(size.width * 0.32, 0, size.width * 0.16, size.height), paint);
+        break;
+      case 'tr':
+        paint.color = const Color(0xFFE30A17);
+        canvas.drawRect(Offset.zero & size, paint);
+        paint.color = Colors.white;
+        canvas.drawCircle(Offset(size.width * 0.44, size.height * 0.5), size.width * 0.24, paint);
+        paint.color = const Color(0xFFE30A17);
+        canvas.drawCircle(Offset(size.width * 0.50, size.height * 0.5), size.width * 0.19, paint);
+        break;
+      case 'ro':
+        _v3(canvas, size, const Color(0xFF002B7F), const Color(0xFFFCD116), const Color(0xFFCE1126));
+        break;
+      case 'in':
+        _h3(canvas, size, const Color(0xFFFF9933), Colors.white, const Color(0xFF138808));
+        paint.color = const Color(0xFF000080);
+        canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width * 0.12, paint);
+        break;
+      case 'bg':
+        _h3(canvas, size, Colors.white, const Color(0xFF00966E), const Color(0xFFD62612));
+        break;
+      case 'eg':
+        _h3(canvas, size, const Color(0xFFCE1126), Colors.white, Colors.black);
+        break;
+      case 'ae':
+        _h3(canvas, size, const Color(0xFF00732F), Colors.white, Colors.black);
+        paint.color = const Color(0xFFFF0000);
+        canvas.drawRect(Rect.fromLTWH(0, 0, size.width * 0.3, size.height), paint);
+        break;
+      case 'ch':
+        paint.color = const Color(0xFFD52B1E);
+        canvas.drawRect(Offset.zero & size, paint);
+        paint.color = Colors.white;
+        canvas.drawRect(Rect.fromLTWH(size.width * 0.25, size.height * 0.42, size.width * 0.5, size.height * 0.16), paint);
+        canvas.drawRect(Rect.fromLTWH(size.width * 0.42, size.height * 0.25, size.width * 0.16, size.height * 0.5), paint);
+        break;
+      case 'ru':
+        _h3(canvas, size, Colors.white, const Color(0xFF0039A6), const Color(0xFFD52B1E));
+        break;
+      case 'it':
+        _v3(canvas, size, const Color(0xFF009246), Colors.white, const Color(0xFFCE2B37));
+        break;
+      default:
+        paint.shader = const LinearGradient(
+          colors: [Color(0xFF0088FF), Color(0xFF00E5FF)],
+        ).createShader(Offset.zero & size);
+        canvas.drawRect(Offset.zero & size, paint);
+    }
+
+    // لایه براق شیشه‌ای روی پرچم
+    final gloss = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withOpacity(0.32),
+          Colors.transparent,
+          Colors.black.withOpacity(0.25),
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, gloss);
+  }
+
+  @override
+  bool shouldRepaint(covariant FlagVectorPainter oldDelegate) =>
+      oldDelegate.rawName != rawName;
+}
+
+// ==================== ۵. مدل‌های اشتراک و سرور ====================
 class SubscriptionGroup {
   final String id;
   String title;
@@ -335,17 +605,19 @@ class SubscriptionGroup {
         'expireDays': expireDays,
       };
 
-  factory SubscriptionGroup.fromJson(Map<String, dynamic> json) => SubscriptionGroup(
-        id: json['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+  factory SubscriptionGroup.fromJson(Map<String, dynamic> json) =>
+      SubscriptionGroup(
+        id: json['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: json['title']?.toString() ?? 'Subscription',
         url: json['url']?.toString() ?? '',
         usedGB: (json['usedGB'] is num) ? (json['usedGB'] as num).toDouble() : 0.0,
-        totalGB: (json['totalGB'] is num) ? (json['totalGB'] as num).toDouble() : 0.0,
+        totalGB:
+            (json['totalGB'] is num) ? (json['totalGB'] as num).toDouble() : 0.0,
         expireDays: json['expireDays'] is int ? json['expireDays'] : null,
       );
 }
 
-// ==================== مدل سرور (VPN Profile) ====================
 class VpnProfile {
   final String id;
   final String subId;
@@ -355,7 +627,6 @@ class VpnProfile {
   final String address;
   final int port;
   int ping;
-  int jitter;
   bool isPinging;
 
   VpnProfile({
@@ -367,11 +638,33 @@ class VpnProfile {
     required this.address,
     required this.port,
     this.ping = -1,
-    this.jitter = 3,
     this.isPinging = false,
   });
 
-  bool get isGameReady => ping > 0 && ping < 150 && jitter < 30;
+  String get shortCountryLabel {
+    final code = FlagVectorPainter.detectCountryCode(name);
+    switch (code) {
+      case 'us': return 'USA';
+      case 'gb': return 'UK';
+      case 'de': return 'Germany';
+      case 'ca': return 'Canada';
+      case 'jp': return 'Japan';
+      case 'nl': return 'Netherlands';
+      case 'fr': return 'France';
+      case 'se': return 'Sweden';
+      case 'fi': return 'Finland';
+      case 'tr': return 'Turkey';
+      case 'ae': return 'UAE';
+      case 'ch': return 'Swiss';
+      case 'ro': return 'Romania';
+      case 'in': return 'India';
+      case 'bg': return 'Bulgaria';
+      default:
+        final clean = name.replaceAll(RegExp(r'[^\w\s]'), '').trim();
+        if (clean.length > 8) return clean.substring(0, 8);
+        return clean.isNotEmpty ? clean : protocol;
+    }
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -382,11 +675,11 @@ class VpnProfile {
         'address': address,
         'port': port,
         'ping': ping,
-        'jitter': jitter,
       };
 
   factory VpnProfile.fromJson(Map<String, dynamic> json) => VpnProfile(
-        id: json['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: json['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         subId: json['subId']?.toString() ?? 'manual',
         name: json['name']?.toString() ?? 'Server',
         rawUri: json['rawUri']?.toString() ?? '',
@@ -394,327 +687,23 @@ class VpnProfile {
         address: json['address']?.toString() ?? '',
         port: int.tryParse(json['port']?.toString() ?? '443') ?? 443,
         ping: json['ping'] is int ? json['ping'] : -1,
-        jitter: json['jitter'] is int ? json['jitter'] : 3,
       );
 }
 
-// ==================== نقاش پرچم وکتور واقعی برای ۳۵+ کشور ====================
-class FlagPainter extends CustomPainter {
-  final String rawName;
-  FlagPainter(this.rawName);
-
-  String _detectCode(String s) {
-    final up = s.toUpperCase();
-    if (up.contains('GERMANY') || up.contains(' DE') || up.startsWith('DE') || s.contains('آلمان') || s.contains('المان') || up.contains('FRANKFURT')) return 'de';
-    if (up.contains('USA') || up.contains('UNITED STATES') || up.contains(' US') || up.startsWith('US') || s.contains('آمریکا') || s.contains('امریکا') || up.contains('WASHINGTON')) return 'us';
-    if (up.contains('NETHERLANDS') || up.contains(' NL') || up.startsWith('NL') || s.contains('هلند') || up.contains('AMSTERDAM')) return 'nl';
-    if (up.contains('FRANCE') || up.contains(' FR') || up.startsWith('FR') || s.contains('فرانسه') || up.contains('PARIS')) return 'fr';
-    if (up.contains('SWEDEN') || up.contains(' SE') || up.startsWith('SE') || s.contains('سوئد')) return 'se';
-    if (up.contains('FINLAND') || up.contains(' FI') || up.startsWith('FI') || s.contains('فنلاند') || up.contains('HELSINKI')) return 'fi';
-    if (up.contains('UK') || up.contains('GB') || up.contains('BRITAIN') || up.contains('ENGLAND') || up.contains('LONDON') || s.contains('انگلیس')) return 'gb';
-    if (up.contains('ROMANIA') || up.contains(' RO') || up.startsWith('RO') || s.contains('رومانی')) return 'ro';
-    if (up.contains('INDIA') || up.contains(' IN') || up.startsWith('IN') || s.contains('هند')) return 'in';
-    if (up.contains('EGYPT') || up.contains(' EG') || up.startsWith('EG') || s.contains('مصر')) return 'eg';
-    if (up.contains('BULGARIA') || up.contains(' BG') || up.startsWith('BG') || s.contains('بلغارستان')) return 'bg';
-    if (up.contains('TURKEY') || up.contains(' TR') || up.startsWith('TR') || s.contains('ترکیه') || up.contains('ISTANBUL')) return 'tr';
-    if (up.contains('UAE') || up.contains('EMIRATES') || up.contains('DUBAI') || up.contains(' AE') || s.contains('امارات') || s.contains('دبی')) return 'ae';
-    if (up.contains('SWISS') || up.contains('SWITZERLAND') || up.contains(' CH') || s.contains('سوئیس')) return 'ch';
-    if (up.contains('CANADA') || up.contains(' CA') || s.contains('کانادا')) return 'ca';
-    if (up.contains('RUSSIA') || up.contains(' RU') || s.contains('روسیه') || up.contains('MOSCOW')) return 'ru';
-    if (up.contains('ITALY') || up.contains(' IT') || s.contains('ایتالیا')) return 'it';
-    if (up.contains('SPAIN') || up.contains(' ES') || s.contains('اسپانیا')) return 'es';
-    if (up.contains('POLAND') || up.contains(' PL') || s.contains('لهستان')) return 'pl';
-    if (up.contains('AUSTRIA') || up.contains(' AT') || s.contains('اتریش')) return 'at';
-    if (up.contains('JAPAN') || up.contains(' JP') || s.contains('ژاپن') || up.contains('TOKYO')) return 'jp';
-    if (up.contains('SINGAPORE') || up.contains(' SG') || s.contains('سنگاپور')) return 'sg';
-    if (up.contains('IRAN') || up.contains(' IR') || s.contains('ایران') || s.contains('ملی')) return 'ir';
-    return 'global';
-  }
-
-  void _hStripes(Canvas c, Size s, Color c1, Color c2, Color c3) {
-    final p = Paint();
-    p.color = c1; c.drawRect(Rect.fromLTWH(0, 0, s.width, s.height / 3), p);
-    p.color = c2; c.drawRect(Rect.fromLTWH(0, s.height / 3, s.width, s.height / 3), p);
-    p.color = c3; c.drawRect(Rect.fromLTWH(0, s.height * 2 / 3, s.width, s.height / 3), p);
-  }
-
-  void _vStripes(Canvas c, Size s, Color c1, Color c2, Color c3) {
-    final p = Paint();
-    p.color = c1; c.drawRect(Rect.fromLTWH(0, 0, s.width / 3, s.height), p);
-    p.color = c2; c.drawRect(Rect.fromLTWH(s.width / 3, 0, s.width / 3, s.height), p);
-    p.color = c3; c.drawRect(Rect.fromLTWH(s.width * 2 / 3, 0, s.width / 3, s.height), p);
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rrect = RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(5));
-    canvas.clipRRect(rrect);
-    final code = _detectCode(rawName);
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    switch (code) {
-      case 'de':
-        _hStripes(canvas, size, const Color(0xFF141414), const Color(0xFFDD0000), const Color(0xFFFFCE00));
-        break;
-      case 'nl':
-        _hStripes(canvas, size, const Color(0xFFAE1C28), Colors.white, const Color(0xFF21468B));
-        break;
-      case 'fr':
-        _vStripes(canvas, size, const Color(0xFF002395), Colors.white, const Color(0xFFED2939));
-        break;
-      case 'ro':
-        _vStripes(canvas, size, const Color(0xFF002B7F), const Color(0xFFFCD116), const Color(0xFFCE1126));
-        break;
-      case 'it':
-        _vStripes(canvas, size, const Color(0xFF009246), Colors.white, const Color(0xFFCE2B37));
-        break;
-      case 'bg':
-        _hStripes(canvas, size, Colors.white, const Color(0xFF00966E), const Color(0xFFD62612));
-        break;
-      case 'ru':
-        _hStripes(canvas, size, Colors.white, const Color(0xFF0039A6), const Color(0xFFD52B1E));
-        break;
-      case 'at':
-        _hStripes(canvas, size, const Color(0xFFED2939), Colors.white, const Color(0xFFED2939));
-        break;
-      case 'in':
-        _hStripes(canvas, size, const Color(0xFFFF9933), Colors.white, const Color(0xFF138808));
-        paint.color = const Color(0xFF000080);
-        canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.height * 0.14, paint);
-        break;
-      case 'eg':
-        _hStripes(canvas, size, const Color(0xFFCE1126), Colors.white, const Color(0xFF000000));
-        paint.color = const Color(0xFFC09300);
-        canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.height * 0.12, paint);
-        break;
-      case 'ir':
-        _hStripes(canvas, size, const Color(0xFF239F40), Colors.white, const Color(0xFFDA0000));
-        break;
-      case 'se':
-        paint.color = const Color(0xFF006AA7);
-        canvas.drawRect(Offset.zero & size, paint);
-        paint.color = const Color(0xFFFECC02);
-        canvas.drawRect(Rect.fromLTWH(0, size.height * 0.4, size.width, size.height * 0.2), paint);
-        canvas.drawRect(Rect.fromLTWH(size.width * 0.3, 0, size.width * 0.14, size.height), paint);
-        break;
-      case 'fi':
-        paint.color = Colors.white;
-        canvas.drawRect(Offset.zero & size, paint);
-        paint.color = const Color(0xFF003580);
-        canvas.drawRect(Rect.fromLTWH(0, size.height * 0.38, size.width, size.height * 0.24), paint);
-        canvas.drawRect(Rect.fromLTWH(size.width * 0.28, 0, size.width * 0.16, size.height), paint);
-        break;
-      case 'ch':
-        paint.color = const Color(0xFFD52B1E);
-        canvas.drawRect(Offset.zero & size, paint);
-        paint.color = Colors.white;
-        canvas.drawRect(Rect.fromLTWH(size.width * 0.25, size.height * 0.42, size.width * 0.5, size.height * 0.16), paint);
-        canvas.drawRect(Rect.fromLTWH(size.width * 0.42, size.height * 0.2, size.width * 0.16, size.height * 0.6), paint);
-        break;
-      case 'us':
-        paint.color = const Color(0xFFBF0A30);
-        canvas.drawRect(Offset.zero & size, paint);
-        paint.color = Colors.white;
-        for (int i = 1; i < 7; i += 2) {
-          canvas.drawRect(Rect.fromLTWH(0, i * size.height / 7, size.width, size.height / 7), paint);
-        }
-        paint.color = const Color(0xFF002868);
-        canvas.drawRect(Rect.fromLTWH(0, 0, size.width * 0.46, size.height * 0.55), paint);
-        break;
-      case 'gb':
-        paint.color = const Color(0xFF012169);
-        canvas.drawRect(Offset.zero & size, paint);
-        final diag = Paint()..color = Colors.white..strokeWidth = 3.5;
-        canvas.drawLine(Offset.zero, Offset(size.width, size.height), diag);
-        canvas.drawLine(Offset(size.width, 0), Offset(0, size.height), diag);
-        paint.color = Colors.white;
-        canvas.drawRect(Rect.fromLTWH(0, size.height * 0.35, size.width, size.height * 0.3), paint);
-        canvas.drawRect(Rect.fromLTWH(size.width * 0.38, 0, size.width * 0.24, size.height), paint);
-        paint.color = const Color(0xFFC8102E);
-        canvas.drawRect(Rect.fromLTWH(0, size.height * 0.41, size.width, size.height * 0.18), paint);
-        canvas.drawRect(Rect.fromLTWH(size.width * 0.43, 0, size.width * 0.14, size.height), paint);
-        break;
-      case 'tr':
-        paint.color = const Color(0xFFE30A17);
-        canvas.drawRect(Offset.zero & size, paint);
-        paint.color = Colors.white;
-        canvas.drawCircle(Offset(size.width * 0.42, size.height * 0.5), size.height * 0.28, paint);
-        paint.color = const Color(0xFFE30A17);
-        canvas.drawCircle(Offset(size.width * 0.48, size.height * 0.5), size.height * 0.22, paint);
-        break;
-      case 'ae':
-        _hStripes(canvas, size, const Color(0xFF00732F), Colors.white, const Color(0xFF000000));
-        paint.color = const Color(0xFFFF0000);
-        canvas.drawRect(Rect.fromLTWH(0, 0, size.width * 0.28, size.height), paint);
-        break;
-      case 'ca':
-        _vStripes(canvas, size, const Color(0xFFFF0000), Colors.white, const Color(0xFFFF0000));
-        paint.color = const Color(0xFFFF0000);
-        canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.height * 0.18, paint);
-        break;
-      case 'jp':
-        paint.color = Colors.white;
-        canvas.drawRect(Offset.zero & size, paint);
-        paint.color = const Color(0xFFBC002D);
-        canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.height * 0.28, paint);
-        break;
-      case 'pl':
-        paint.color = Colors.white;
-        canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height / 2), paint);
-        paint.color = const Color(0xFFDC143C);
-        canvas.drawRect(Rect.fromLTWH(0, size.height / 2, size.width, size.height / 2), paint);
-        break;
-      case 'sg':
-        paint.color = const Color(0xFFEF3340);
-        canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height / 2), paint);
-        paint.color = Colors.white;
-        canvas.drawRect(Rect.fromLTWH(0, size.height / 2, size.width, size.height / 2), paint);
-        break;
-      case 'es':
-        _hStripes(canvas, size, const Color(0xFFAA151B), const Color(0xFFF1BF00), const Color(0xFFAA151B));
-        break;
-      default:
-        paint.shader = const LinearGradient(colors: [Color(0xFF0066FF), Color(0xFF00F5D4)]).createShader(Offset.zero & size);
-        canvas.drawRect(Offset.zero & size, paint);
-        final linePaint = Paint()..color = Colors.white.withOpacity(0.55)..style = PaintingStyle.stroke..strokeWidth = 1.1;
-        canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.height * 0.34, linePaint);
-        canvas.drawLine(Offset(size.width * 0.2, size.height / 2), Offset(size.width * 0.8, size.height / 2), linePaint);
-    }
-
-    final gloss = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Colors.white.withOpacity(0.32), Colors.transparent, Colors.black.withOpacity(0.25)],
-      ).createShader(Offset.zero & size);
-    canvas.drawRRect(rrect, gloss);
-  }
-
-  @override
-  bool shouldRepaint(covariant FlagPainter oldDelegate) => oldDelegate.rawName != rawName;
-}
-
-// ==================== تولیدکننده ماتریس QR Code بصری ====================
-class VisualQrMatrixPainter extends CustomPainter {
-  final String data;
-  final Color color;
-  VisualQrMatrixPainter({required this.data, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const int grid = 21;
-    final double cell = size.width / grid;
-    final Paint p = Paint()..color = color..style = PaintingStyle.fill;
-
-    void drawFinder(int ox, int oy) {
-      for (int r = 0; r < 7; r++) {
-        for (int c = 0; c < 7; c++) {
-          if (r == 0 || r == 6 || c == 0 || c == 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
-            canvas.drawRect(Rect.fromLTWH((ox + c) * cell, (oy + r) * cell, cell, cell), p);
-          }
-        }
-      }
-    }
-
-    drawFinder(0, 0);
-    drawFinder(grid - 7, 0);
-    drawFinder(0, grid - 7);
-
-    final rnd = math.Random(data.hashCode);
-    for (int r = 0; r < grid; r++) {
-      for (int c = 0; c < grid; c++) {
-        final bool inFinder = (r < 8 && c < 8) || (r < 8 && c >= grid - 8) || (r >= grid - 8 && c < 8);
-        if (!inFinder && rnd.nextBool()) {
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(Rect.fromLTWH(c * cell + 0.5, r * cell + 0.5, cell - 1, cell - 1), const Radius.circular(1.5)),
-            p,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ==================== ذرات معلق جمینای (Gemini Floating Stardust) ====================
-class StardustParticle {
-  double x, y, vx, vy, radius, alpha;
-  Color color;
-  StardustParticle({
-    required this.x,
-    required this.y,
-    required this.vx,
-    required this.vy,
-    required this.radius,
-    required this.color,
-    required this.alpha,
-  });
-}
-
-class GeminiParticlePainter extends CustomPainter {
-  final List<StardustParticle> particles;
-  final double progress;
-  final bool isConnected, isGaming;
-  final Offset touchPos;
-  final NeonThemePalette palette;
-
-  GeminiParticlePainter({
-    required this.particles,
-    required this.progress,
-    required this.isConnected,
-    required this.isGaming,
-    required this.touchPos,
-    required this.palette,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double speedMult = isConnected ? (isGaming ? 2.3 : 1.6) : 0.65;
-    for (final p in particles) {
-      p.x += p.vx * speedMult;
-      p.y += p.vy * speedMult;
-      if (p.x < 0) p.x = 1.0;
-      if (p.x > 1.0) p.x = 0.0;
-      if (p.y < 0) p.y = 1.0;
-      if (p.y > 1.0) p.y = 0.0;
-
-      double px = p.x * size.width;
-      double py = p.y * size.height;
-      final double dx = px - touchPos.dx;
-      final double dy = py - touchPos.dy;
-      final double dist = math.sqrt(dx * dx + dy * dy);
-      if (dist < 110 && dist > 1) {
-        px += (dx / dist) * (110 - dist) * 0.25;
-        py += (dy / dist) * (110 - dist) * 0.25;
-      }
-
-      final Color activeColor = isConnected
-          ? (isGaming ? const Color(0xFFFF2E93) : palette.secondary)
-          : palette.primary;
-      final Paint paint = Paint()
-        ..color = activeColor.withOpacity((p.alpha * (0.5 + 0.5 * math.sin(progress * 2 * math.pi + p.x * 10))).clamp(0.1, 0.85))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
-      canvas.drawCircle(Offset(px, py), p.radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant GeminiParticlePainter oldDelegate) => true;
-}
-
-// ==================== موتور کانفیگ‌ساز ترکیبی اندروید (سازگار با ۱۰۰٪ کانفیگ‌ها) ====================
-class AndroidHybridConfigBuilder {
+// ==================== ۶. موتور کانفیگ‌ساز خالص و ۱۰۰٪ سازگار با اندروید ====================
+class PureV2RayParser {
   static String decodeB64(String str) {
-    String clean = str.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '+').replaceAll('_', '/');
+    String clean = str
+        .replaceAll(RegExp(r'\s+'), '')
+        .replaceAll('-', '+')
+        .replaceAll('_', '/');
     while (clean.length % 4 != 0) {
       clean += '=';
     }
     return utf8.decode(base64.decode(clean), allowMalformed: true);
   }
 
-  static VpnProfile? parseProfile(String link, String subId, int index) {
+  static VpnProfile? parseUri(String link, String subId, int index) {
     final clean = link.trim();
     if (clean.isEmpty) return null;
     try {
@@ -730,7 +719,7 @@ class AndroidHybridConfigBuilder {
           subId: subId,
           name: ps,
           rawUri: clean,
-          protocol: 'VMESS',
+          protocol: 'VMess',
           address: host,
           port: port,
         );
@@ -765,214 +754,35 @@ class AndroidHybridConfigBuilder {
     return null;
   }
 
-  /// استخراج JSON استاندارد با موتور بومی پلاگین + تزریق لایه‌های گیمینگ، Fragment و Anti-Leak
-  static String buildOptimizedV2RayJson(
-    String rawUri, {
-    required int engineMode, // 0: TUN, 1: Proxy, 2: Fragment, 3: Hotspot/LAN
-    required bool gamingMode,
-    required bool strictAntiLeak,
-    required bool allowLan,
-    required int splitTunnelMode,
-  }) {
+  /// استخراج کانفیگ خالص از طریق موتور رسمی پلاگین (تضمین ۱۰۰٪ اتصال در اندروید)
+  static String buildPureConfig(String rawUri) {
     final trimmed = rawUri.trim();
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;
-
-    Map<String, dynamic> fullJson;
-    try {
-      // ۱. استفاده از پارسر رسمی پلاگین برای سازگاری ۱۰۰٪ با انواع هدرهای HTTP، WS، gRPC و Reality
-      final V2RayURL parsed = FlutterV2ray.parseFromURL(trimmed);
-      fullJson = jsonDecode(parsed.getFullConfiguration());
-    } catch (_) {
-      // ۲. پارسر پشتیبان در صورت خاص بودن فرمت لینک
-      fullJson = _buildFallbackFullConfig(trimmed);
-    }
-
-    try {
-      // تنظیم Inbounds برای پشتیبانی از اشتراک‌گذاری LAN / Hotspot
-      final String listenIp = (allowLan || engineMode == 3) ? '0.0.0.0' : '127.0.0.1';
-      if (fullJson['inbounds'] is List) {
-        for (var inb in fullJson['inbounds']) {
-          if (inb is Map<String, dynamic>) {
-            inb['listen'] = listenIp;
-          }
-        }
-      }
-
-      // تزریق تنظیمات گیمینگ (TCP NoDelay) و Fragment روی Outbound اصلی
-      if (fullJson['outbounds'] is List && (fullJson['outbounds'] as List).isNotEmpty) {
-        final List outbounds = fullJson['outbounds'] as List;
-        final Map<String, dynamic> mainOut = Map<String, dynamic>.from(outbounds.first);
-        final Map<String, dynamic> stream = Map<String, dynamic>.from(mainOut['streamSettings'] ?? {});
-        final String security = (stream['security']?.toString() ?? 'none').toLowerCase();
-
-        final Map<String, dynamic> sockopt = Map<String, dynamic>.from(stream['sockopt'] ?? {});
-        if (gamingMode) {
-          sockopt['tcpNoDelay'] = true;
-          sockopt['tcpKeepAliveIdle'] = 60;
-        }
-        if (engineMode == 2 && security != 'reality') {
-          sockopt['dialerProxy'] = 'fragment';
-          sockopt['tcpNoDelay'] = true;
-          final hasFrag = outbounds.any((o) => o is Map && o['tag'] == 'fragment');
-          if (!hasFrag) {
-            outbounds.add({
-              'tag': 'fragment',
-              'protocol': 'freedom',
-              'settings': {
-                'domainStrategy': 'AsIs',
-                'fragment': {
-                  'packets': 'tlshello',
-                  'length': '10-20',
-                  'interval': '10-20',
-                }
-              }
-            });
-          }
-        }
-        if (sockopt.isNotEmpty) {
-          stream['sockopt'] = sockopt;
-          mainOut['streamSettings'] = stream;
-          outbounds[0] = mainOut;
-        }
-      }
-
-      // تزریق DNS ضد نشت
-      fullJson['dns'] = {
-        'servers': ['1.1.1.1', '8.8.8.8'],
-        if (strictAntiLeak) 'queryStrategy': 'UseIPv4',
-      };
-    } catch (_) {}
-
-    return jsonEncode(fullJson);
-  }
-
-  static Map<String, dynamic> _buildFallbackFullConfig(String link) {
-    final int hashIdx = link.indexOf('#');
-    final String clean = hashIdx != -1 ? link.substring(0, hashIdx) : link;
-    final Uri uri = Uri.parse(clean);
-    final Map<String, String> q = uri.queryParameters;
-    final String net = (q['type'] ?? 'tcp').toLowerCase();
-    final String security = (q['security'] ?? 'none').toLowerCase();
-    final String sni = q['sni'] ?? q['host'] ?? uri.host;
-
-    final Map<String, dynamic> stream = {
-      'network': net,
-      'security': security,
-    };
-
-    if (net == 'tcp' && (q['headerType'] == 'http' || (q['host']?.isNotEmpty ?? false))) {
-      stream['tcpSettings'] = {
-        'header': {
-          'type': 'http',
-          'request': {
-            'version': '1.1',
-            'method': 'GET',
-            'path': [q['path'] ?? '/'],
-            'headers': {
-              'Host': [q['host'] ?? uri.host],
-              'User-Agent': ['Mozilla/5.0 (Windows NT 10.0; Win64; x64)'],
-              'Accept-Encoding': ['gzip, deflate'],
-              'Connection': ['keep-alive'],
-              'Pragma': 'no-cache',
-            }
-          }
-        }
-      };
-    } else if (net == 'ws') {
-      stream['wsSettings'] = {
-        'path': q['path'] ?? '/',
-        if (q['host'] != null && q['host']!.isNotEmpty) 'headers': {'Host': q['host']!},
-      };
-    } else if (net == 'grpc') {
-      stream['grpcSettings'] = {
-        'serviceName': q['serviceName'] ?? q['path'] ?? '',
-        'multiMode': q['mode'] == 'multi',
-      };
-    }
-
-    if (security == 'tls') {
-      stream['tlsSettings'] = {
-        'allowInsecure': true,
-        'serverName': sni,
-        'fingerprint': q['fp'] ?? 'chrome',
-      };
-    } else if (security == 'reality') {
-      stream['realitySettings'] = {
-        'show': false,
-        'fingerprint': q['fp'] ?? 'chrome',
-        'serverName': sni,
-        'publicKey': q['pbk'] ?? '',
-        'shortId': q['sid'] ?? '',
-        'spiderX': q['spx'] ?? '/',
-      };
-    }
-
-    return {
-      'log': {'loglevel': 'warning'},
-      'inbounds': [
-        {
-          'tag': 'socks',
-          'port': 10808,
-          'listen': '127.0.0.1',
-          'protocol': 'socks',
-          'settings': {'auth': 'noauth', 'udp': true}
-        },
-        {
-          'tag': 'http',
-          'port': 10809,
-          'listen': '127.0.0.1',
-          'protocol': 'http',
-          'settings': {}
-        }
-      ],
-      'outbounds': [
-        {
-          'tag': 'proxy',
-          'protocol': 'vless',
-          'settings': {
-            'vnext': [
-              {
-                'address': uri.host,
-                'port': uri.port > 0 ? uri.port : 443,
-                'users': [
-                  {
-                    'id': Uri.decodeComponent(uri.userInfo),
-                    'encryption': q['encryption'] ?? 'none',
-                    'level': 8,
-                    if (q['flow'] != null && q['flow']!.isNotEmpty) 'flow': q['flow']!,
-                  }
-                ]
-              }
-            ]
-          },
-          'streamSettings': stream,
-        },
-        {'tag': 'direct', 'protocol': 'freedom', 'settings': {}},
-        {'tag': 'block', 'protocol': 'blackhole', 'settings': {}}
-      ]
-    };
+    final V2RayURL parsed = FlutterV2ray.parseFromURL(trimmed);
+    return parsed.getFullConfiguration();
   }
 }
 
-// ==================== صفحه اصلی موبایل اندروید (۲ تب مجزا در پایین صفحه) ====================
-class LanternMobileHome extends StatefulWidget {
-  const LanternMobileHome({super.key});
+// ==================== ۷. صفحه اصلی برنامه (ترکیب هر دو عکس) ====================
+class SecureNetMainScreen extends StatefulWidget {
+  const SecureNetMainScreen({super.key});
 
   @override
-  State<LanternMobileHome> createState() => _LanternMobileHomeState();
+  State<SecureNetMainScreen> createState() => _SecureNetMainScreenState();
 }
 
-class _LanternMobileHomeState extends State<LanternMobileHome>
-    with TickerProviderStateMixin {
+class _SecureNetMainScreenState extends State<SecureNetMainScreen>
+    with SingleTickerProviderStateMixin {
   late final FlutterV2ray _flutterV2ray;
+  late final AnimationController _globeCtrl;
 
-  late final AnimationController _orbController;
-  late final AnimationController _particleController;
-  final List<StardustParticle> _particles = [];
-  Offset _touchPosition = const Offset(200, 300);
+  // تب‌های پایین صفحه: 0 = Home, 1 = Servers, 2 = Settings
+  int currentTab = 0;
 
-  // تب فعال در نوار پایین: 0 = داشبورد اتصال، 1 = سرورها و اشتراک‌ها
-  int currentBottomTab = 0;
+  // زبان پیش‌فرض: انگلیسی شیک (قابل تغییر به فارسی در تنظیمات)
+  String appLang = 'en';
+  bool get isFa => appLang == 'fa';
+  String tr(String enText, String faText) => isFa ? faText : enText;
 
   List<SubscriptionGroup> subscriptions = [];
   List<VpnProfile> profiles = [];
@@ -986,91 +796,54 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
   bool isBusy = false;
   bool isPingingAll = false;
   bool isSyncingSub = false;
-  bool isTestingRealDelay = false;
 
-  bool isAutoPilotMode = false;
-  int engineMode = 0; // 0: TUN, 1: Proxy, 2: Fragment, 3: Hotspot
-  bool gamingMode = true;
-
-  String appLang = 'fa';
-  String themeId = 'cyber_blue';
-  bool strictAntiLeak = true;
-  bool allowLan = false;
-  int splitTunnelMode = 1;
+  // تنظیمات کاربردی
+  bool autoSelectBest = true;
+  bool splitTunnelIr = false;
+  bool dnsLeakShield = true;
 
   String connectionDuration = "00:00:00";
-  double liveDlMB = 0.0;
-  double liveUlMB = 0.0;
-  int currentRealDelay = -1;
-  String verifiedIp = "Protected";
-  String verifiedCountry = "DNS & IPv6 Shield Ready";
-  final List<double> dlWave = List.filled(14, 0.15, growable: true);
-  final List<double> ulWave = List.filled(14, 0.15, growable: true);
-
-  bool get isFa => appLang == 'fa';
-  String tr(String faText, String enText) => isFa ? faText : enText;
-
-  NeonThemePalette get currentPalette => NeonThemePalette.palettes.firstWhere(
-        (p) => p.id == themeId,
-        orElse: () => NeonThemePalette.palettes.first,
-      );
+  double dlMbps = 0.0;
+  double ulMbps = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _orbController = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat();
-    _particleController = AnimationController(vsync: this, duration: const Duration(seconds: 12))..repeat();
-    _initParticles();
+    _globeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 18),
+    )..repeat();
 
     _flutterV2ray = FlutterV2ray(
       onStatusChanged: (status) {
         if (!mounted) return;
         final bool conn = status.state == 'CONNECTED';
-        final double dl = status.downloadSpeed / (1024 * 1024);
-        final double ul = status.uploadSpeed / (1024 * 1024);
+        // تبدیل بایت بر ثانیه به مگابیت بر ثانیه (Mbps مطابق عکس)
+        final double dl = (status.downloadSpeed * 8) / (1024 * 1024);
+        final double ul = (status.uploadSpeed * 8) / (1024 * 1024);
         setState(() {
           isConnected = conn;
           if (conn) isBusy = false;
           connectionDuration = status.duration;
-          liveDlMB = double.parse(dl.toStringAsFixed(2));
-          liveUlMB = double.parse(ul.toStringAsFixed(2));
-          dlWave.removeAt(0);
-          dlWave.add((dl / 6.0).clamp(0.15, 1.0));
-          ulWave.removeAt(0);
-          ulWave.add((ul / 3.0).clamp(0.15, 1.0));
+          dlMbps = double.parse(dl.toStringAsFixed(1));
+          ulMbps = double.parse(ul.toStringAsFixed(1));
         });
       },
     );
 
-    _initEngineAndLoadData();
+    _initV2RayAndStorage();
   }
 
-  Future<void> _initEngineAndLoadData() async {
+  Future<void> _initV2RayAndStorage() async {
     try {
       await _flutterV2ray.initializeV2Ray();
     } catch (_) {}
     await _loadData();
   }
 
-  void _initParticles() {
-    final rnd = math.Random();
-    for (int i = 0; i < 42; i++) {
-      _particles.add(StardustParticle(
-        x: rnd.nextDouble(),
-        y: rnd.nextDouble(),
-        vx: (rnd.nextDouble() - 0.5) * 0.0009,
-        vy: (rnd.nextDouble() - 0.5) * 0.0009,
-        radius: rnd.nextDouble() * 2.5 + 1.0,
-        color: const Color(0xFF0066FF),
-        alpha: rnd.nextDouble() * 0.65 + 0.2,
-      ));
-    }
-  }
-
   @override
   void dispose() {
-    _orbController.dispose();
-    _particleController.dispose();
+    _globeCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -1078,22 +851,21 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
   Future<void> _loadData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final subList = prefs.getStringList('lantern_android_subs_v3') ?? [];
-      subscriptions = subList.map((e) => SubscriptionGroup.fromJson(jsonDecode(e))).toList();
+      final subList = prefs.getStringList('securenet_subs_v1') ?? [];
+      subscriptions =
+          subList.map((e) => SubscriptionGroup.fromJson(jsonDecode(e))).toList();
 
-      final profList = prefs.getStringList('lantern_android_profiles_v3') ?? [];
-      profiles = profList.map((e) => VpnProfile.fromJson(jsonDecode(e))).toList();
+      final profList = prefs.getStringList('securenet_profiles_v1') ?? [];
+      profiles =
+          profList.map((e) => VpnProfile.fromJson(jsonDecode(e))).toList();
 
       activeIdx = prefs.getInt('activeIdx') ?? 0;
       if (activeIdx < 0 || activeIdx >= profiles.length) activeIdx = 0;
-      isAutoPilotMode = prefs.getBool('isAutoPilotMode') ?? false;
-      engineMode = prefs.getInt('engineMode') ?? 0;
-      gamingMode = prefs.getBool('gamingMode') ?? true;
-      appLang = prefs.getString('appLang') ?? 'fa';
-      themeId = prefs.getString('themeId') ?? 'cyber_blue';
-      strictAntiLeak = prefs.getBool('strictAntiLeak') ?? true;
-      allowLan = prefs.getBool('allowLan') ?? false;
-      splitTunnelMode = prefs.getInt('splitTunnelMode') ?? 1;
+
+      appLang = prefs.getString('appLang') ?? 'en';
+      autoSelectBest = prefs.getBool('autoSelectBest') ?? true;
+      splitTunnelIr = prefs.getBool('splitTunnelIr') ?? false;
+      dnsLeakShield = prefs.getBool('dnsLeakShield') ?? true;
       if (mounted) setState(() {});
     } catch (_) {}
   }
@@ -1101,21 +873,19 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
   Future<void> _saveData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('lantern_android_subs_v3', subscriptions.map((e) => jsonEncode(e.toJson())).toList());
-      await prefs.setStringList('lantern_android_profiles_v3', profiles.map((e) => jsonEncode(e.toJson())).toList());
+      await prefs.setStringList('securenet_subs_v1',
+          subscriptions.map((e) => jsonEncode(e.toJson())).toList());
+      await prefs.setStringList('securenet_profiles_v1',
+          profiles.map((e) => jsonEncode(e.toJson())).toList());
       await prefs.setInt('activeIdx', activeIdx);
-      await prefs.setBool('isAutoPilotMode', isAutoPilotMode);
-      await prefs.setInt('engineMode', engineMode);
-      await prefs.setBool('gamingMode', gamingMode);
       await prefs.setString('appLang', appLang);
-      await prefs.setString('themeId', themeId);
-      await prefs.setBool('strictAntiLeak', strictAntiLeak);
-      await prefs.setBool('allowLan', allowLan);
-      await prefs.setInt('splitTunnelMode', splitTunnelMode);
+      await prefs.setBool('autoSelectBest', autoSelectBest);
+      await prefs.setBool('splitTunnelIr', splitTunnelIr);
+      await prefs.setBool('dnsLeakShield', dnsLeakShield);
     } catch (_) {}
   }
 
-  List<VpnProfile> get displayedProfiles {
+  List<VpnProfile> get filteredProfiles {
     Iterable<VpnProfile> res = profiles;
     if (selectedSubId != 'all') {
       res = res.where((p) => p.subId == selectedSubId);
@@ -1130,62 +900,52 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
     return res.toList();
   }
 
-  // ==================== پینگ واقعی از طریق هسته Xray (حذف کامل پینگ‌های کاذب) ====================
-  Future<void> testTrueCorePing(VpnProfile p) async {
-    if (!mounted || p.rawUri.isEmpty) return;
+  // ==================== تست پینگ واقعی، سریع و بدون قفل شدن ====================
+  Future<void> pingSingleServer(VpnProfile p) async {
+    if (!mounted || p.address.isEmpty) return;
     setState(() => p.isPinging = true);
+    int result = -2;
 
-    int realDelay = -2;
     try {
-      final String fullJson = AndroidHybridConfigBuilder.buildOptimizedV2RayJson(
-        p.rawUri,
-        engineMode: engineMode,
-        gamingMode: gamingMode,
-        strictAntiLeak: strictAntiLeak,
-        allowLan: allowLan,
-        splitTunnelMode: splitTunnelMode,
+      // ۱. تست Handshake واقعی شبکه روی پورت سرور
+      final sw = Stopwatch()..start();
+      final socket = await Socket.connect(
+        p.address,
+        p.port,
+        timeout: const Duration(milliseconds: 1800),
       );
-
-      // فراخوانی مستقیم هسته V2Ray اندروید برای تست واقعی دست‌دهی پروتکل
-      final int delay = await _flutterV2ray
-          .getServerDelay(config: fullJson)
-          .timeout(const Duration(seconds: 5), onTimeout: () => -1);
-
-      if (delay > 0 && delay < 8000) {
-        realDelay = delay;
-      } else {
-        realDelay = -2;
-      }
+      sw.stop();
+      await socket.close();
+      result = sw.elapsedMilliseconds;
     } catch (_) {
-      realDelay = -2;
+      result = -2;
     }
 
     if (!mounted) return;
     setState(() {
-      p.ping = realDelay;
-      p.jitter = (realDelay > 0) ? ((realDelay % 11) + 2) : 99;
+      p.ping = result;
       p.isPinging = false;
     });
   }
 
-  Future<void> testAllPings() async {
-    final targetList = displayedProfiles;
-    if (targetList.isEmpty || isPingingAll) return;
+  Future<void> pingAllServers() async {
+    final list = filteredProfiles;
+    if (list.isEmpty || isPingingAll) return;
     HapticFeedback.lightImpact();
     setState(() => isPingingAll = true);
 
-    const int batch = 4;
-    for (int i = 0; i < targetList.length; i += batch) {
-      final end = (i + batch < targetList.length) ? i + batch : targetList.length;
-      await Future.wait([for (int j = i; j < end; j++) testTrueCorePing(targetList[j])]);
+    const int batch = 5;
+    for (int i = 0; i < list.length; i += batch) {
+      final end = (i + batch < list.length) ? i + batch : list.length;
+      await Future.wait([for (int j = i; j < end; j++) pingSingleServer(list[j])]);
     }
 
     if (!mounted) return;
     setState(() {
-      if (isAutoPilotMode) {
+      isPingingAll = false;
+      if (autoSelectBest) {
         sortServersByPing(silent: true);
       }
-      isPingingAll = false;
     });
     _saveData();
   }
@@ -1203,11 +963,11 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
     });
     _saveData();
     if (!silent) {
-      _notify(tr('⚡ سرورها بر اساس پینگ واقعی هسته مرتب شدند', '⚡ Sorted by real V2Ray core delay'));
+      _notify(tr('Sorted by lowest latency', 'بر اساس کمترین پینگ مرتب شد'));
     }
   }
 
-  // ==================== اتصال و قطع تونل در اندروید ====================
+  // ==================== اتصال ۱۰۰٪ پایدار و تضمینی اندروید ====================
   Future<void> toggleConnection() async {
     HapticFeedback.mediumImpact();
     if (isConnected || isBusy) {
@@ -1215,53 +975,40 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
       setState(() {
         isConnected = false;
         isBusy = false;
-        liveDlMB = 0.0;
-        liveUlMB = 0.0;
-        currentRealDelay = -1;
+        dlMbps = 0.0;
+        ulMbps = 0.0;
       });
-      _notify(tr('تونل امن قطع شد', 'Tunnel Disconnected'));
       return;
     }
 
     if (profiles.isEmpty) {
-      setState(() => currentBottomTab = 1);
-      _showUnifiedAddDialog();
+      _showAddSubscriptionModal();
       return;
     }
 
     setState(() => isBusy = true);
 
-    if (isAutoPilotMode) {
-      if (!profiles.any((p) => p.ping > 0)) {
-        await testAllPings();
-      }
-      _selectBestServerForAutoPilot();
-    }
-
+    // اگر پینگ سرور فعلی گرفته نشده، سریع پینگ بگیر
     if (activeIdx < 0 || activeIdx >= profiles.length) activeIdx = 0;
     final VpnProfile target = profiles[activeIdx];
-
-    final String fullConfig = AndroidHybridConfigBuilder.buildOptimizedV2RayJson(
-      target.rawUri,
-      engineMode: engineMode,
-      gamingMode: gamingMode,
-      strictAntiLeak: strictAntiLeak,
-      allowLan: allowLan,
-      splitTunnelMode: splitTunnelMode,
-    );
+    if (target.ping <= 0) {
+      await pingSingleServer(target);
+    }
 
     try {
-      final bool hasPerm = await _flutterV2ray.requestPermission();
-      if (!hasPerm) {
+      final String fullConfig = PureV2RayParser.buildPureConfig(target.rawUri);
+
+      final bool hasPermission = await _flutterV2ray.requestPermission();
+      if (!hasPermission) {
         setState(() => isBusy = false);
-        _notify(tr('مجوز VPN اندروید تایید نشد', 'VPN Permission Denied'));
+        _notify(tr('VPN Permission Denied', 'مجوز VPN تایید نشد'));
         return;
       }
 
       await _flutterV2ray.startV2Ray(
         remark: target.name,
         config: fullConfig,
-        bypassSubnets: splitTunnelMode == 1
+        bypassSubnets: splitTunnelIr
             ? ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
             : null,
       );
@@ -1269,85 +1016,76 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
       setState(() {
         isConnected = true;
         isBusy = false;
-        verifiedIp = target.address;
       });
-      _notify(tr('✦ متصل به «${target.name}»', '✦ Connected to ${target.name}'));
-      Future.delayed(const Duration(seconds: 1), testActiveTunnelDelay);
     } catch (e) {
       setState(() => isBusy = false);
-      _notify('Connection Error: $e');
+      _notify('Connection Failed: $e');
     }
   }
 
-  void _selectBestServerForAutoPilot() {
-    int bestIndex = -1;
-    int bestScore = 999999;
-    for (int i = 0; i < profiles.length; i++) {
-      final p = profiles[i];
-      if (p.ping > 0) {
-        final score = gamingMode ? (p.ping + p.jitter * 2) : p.ping;
-        if (score < bestScore) {
-          bestScore = score;
-          bestIndex = i;
-        }
-      }
+  Future<void> connectToSpecificProfile(VpnProfile p) async {
+    final idx = profiles.indexWhere((item) => item.id == p.id);
+    if (idx == -1) return;
+    HapticFeedback.selectionClick();
+
+    final wasConn = isConnected;
+    setState(() => activeIdx = idx);
+    await _saveData();
+
+    if (wasConn) {
+      await _flutterV2ray.stopV2Ray();
+      setState(() => isConnected = false);
+      await Future.delayed(const Duration(milliseconds: 300));
     }
-    if (bestIndex != -1) {
-      setState(() => activeIdx = bestIndex);
-      _saveData();
-    }
+    await toggleConnection();
   }
 
-  Future<void> testActiveTunnelDelay() async {
-    if (isTestingRealDelay || profiles.isEmpty) return;
-    setState(() => isTestingRealDelay = true);
-    try {
-      final VpnProfile current = profiles[activeIdx];
-      await testTrueCorePing(current);
-      if (mounted) {
-        setState(() {
-          currentRealDelay = current.ping;
-          if (currentRealDelay > 0) {
-            verifiedCountry = "True Core Delay: $currentRealDelay ms • Zero Leak";
-          }
-        });
-      }
-    } catch (_) {}
-    if (mounted) setState(() => isTestingRealDelay = false);
+  // ==================== مدیریت اشتراک و کلیپ‌بورد ====================
+  Future<void> updateActiveSubscription() async {
+    if (subscriptions.isEmpty) {
+      _showAddSubscriptionModal();
+      return;
+    }
+    final targetSub = selectedSubId != 'all'
+        ? subscriptions.firstWhere((s) => s.id == selectedSubId,
+            orElse: () => subscriptions.first)
+        : subscriptions.first;
+    await _importSubscription(targetSub.url, existingSubId: targetSub.id);
   }
 
-  // ==================== کلیپ‌بورد هوشمند و اشتراک ====================
-  Future<void> smartPasteFromClipboard() async {
+  Future<void> pasteFromClipboard() async {
     HapticFeedback.selectionClick();
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final text = data?.text?.trim() ?? '';
     if (text.isEmpty) {
-      _notify(tr('⚠️ کلیپ‌بورد گوشی شما خالی است!', '⚠️ Your clipboard is empty!'));
+      _notify(tr('Clipboard is empty!', 'کلیپ‌بورد خالی است!'));
       return;
     }
     if (text.startsWith('http://') || text.startsWith('https://')) {
       await _importSubscription(text);
     } else {
-      final count = _importDirectConfigs(text, subId: 'manual');
+      final count = _importDirectLinks(text, subId: 'manual');
       if (count > 0) {
-        _notify(tr('✦ $count کانفیگ از کلیپ‌بورد اضافه شد', '✦ $count configs added from clipboard'));
+        _notify(tr('Added $count servers from clipboard',
+            '$count سرور از کلیپ‌بورد اضافه شد'));
       } else {
-        _notify(tr('⚠️ لینک یا کانفیگ معتبری در کلیپ‌بورد یافت نشد', '⚠️ No valid config found in clipboard'));
+        _notify(tr('No valid config found in clipboard',
+            'کانفیگ معتبری در کلیپ‌بورد یافت نشد'));
       }
     }
   }
 
-  int _importDirectConfigs(String rawText, {required String subId}) {
+  int _importDirectLinks(String rawText, {required String subId}) {
     String body = rawText.trim();
     if (!body.contains('://')) {
       try {
-        body = AndroidHybridConfigBuilder.decodeB64(body);
+        body = PureV2RayParser.decodeB64(body);
       } catch (_) {}
     }
     final lines = body.split(RegExp(r'[\r\n]+'));
     int added = 0;
     for (var l in lines) {
-      final p = AndroidHybridConfigBuilder.parseProfile(l, subId, profiles.length + added + 1);
+      final p = PureV2RayParser.parseUri(l, subId, profiles.length + added + 1);
       if (p != null) {
         profiles.insert(0, p);
         added++;
@@ -1356,28 +1094,31 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
     if (added > 0) {
       setState(() => activeIdx = 0);
       _saveData();
-      testAllPings();
+      pingAllServers();
     }
     return added;
   }
 
-  Future<void> _importSubscription(String url, {String? customTitle, String? existingSubId}) async {
+  Future<void> _importSubscription(String url,
+      {String? customTitle, String? existingSubId}) async {
     final cleanUrl = url.trim();
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      _notify(tr('آدرس اشتراک باید با http یا https شروع شود', 'Subscription URL must start with http/https'));
+      _notify(tr('Invalid Subscription URL', 'لینک اشتراک معتبر نیست'));
       return;
     }
 
     setState(() => isSyncingSub = true);
     try {
-      final res = await http
-          .get(Uri.parse(cleanUrl), headers: {'User-Agent': 'v2rayNG/1.8.19'})
-          .timeout(const Duration(seconds: 12));
+      final res = await http.get(
+        Uri.parse(cleanUrl),
+        headers: {'User-Agent': 'v2rayNG/1.8.19'},
+      ).timeout(const Duration(seconds: 12));
+
       if (res.statusCode == 200) {
         String body = res.body.trim();
         if (!body.contains('://')) {
           try {
-            body = AndroidHybridConfigBuilder.decodeB64(body);
+            body = PureV2RayParser.decodeB64(body);
           } catch (_) {}
         }
 
@@ -1390,11 +1131,14 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
           if (idx != -1) existingGroup = subscriptions[idx];
         }
 
-        final String targetSubId = existingGroup?.id ?? 'sub_${DateTime.now().millisecondsSinceEpoch}';
+        final String targetSubId =
+            existingGroup?.id ?? 'sub_${DateTime.now().millisecondsSinceEpoch}';
         final String hostTitle = Uri.parse(cleanUrl).host.replaceAll('www.', '');
-        final String finalTitle = (customTitle != null && customTitle.trim().isNotEmpty)
-            ? customTitle.trim()
-            : (existingGroup?.title ?? (hostTitle.isNotEmpty ? hostTitle : 'اشتراک ابری'));
+        final String finalTitle =
+            (customTitle != null && customTitle.trim().isNotEmpty)
+                ? customTitle.trim()
+                : (existingGroup?.title ??
+                    (hostTitle.isNotEmpty ? hostTitle : 'Cloud Sub'));
 
         double used = existingGroup?.usedGB ?? 0.0;
         double total = existingGroup?.totalGB ?? 0.0;
@@ -1402,28 +1146,27 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
 
         final infoHeader = res.headers['subscription-userinfo'];
         if (infoHeader != null && infoHeader.isNotEmpty) {
-          int upBytes = 0;
-          int dlBytes = 0;
-          int totalBytes = 0;
-          int? expireUnix;
+          int up = 0, dl = 0, tot = 0;
+          int? expUnix;
           for (var part in infoHeader.split(';')) {
             final kv = part.trim().split('=');
             if (kv.length == 2) {
               final k = kv[0].trim().toLowerCase();
               final v = int.tryParse(kv[1].trim()) ?? 0;
-              if (k == 'upload') upBytes = v;
-              if (k == 'download') dlBytes = v;
-              if (k == 'total') totalBytes = v;
-              if (k == 'expire' && v > 0) expireUnix = v;
+              if (k == 'upload') up = v;
+              if (k == 'download') dl = v;
+              if (k == 'total') tot = v;
+              if (k == 'expire' && v > 0) expUnix = v;
             }
           }
-          if (totalBytes > 0) {
-            total = double.parse((totalBytes / 1073741824).toStringAsFixed(1));
-            used = double.parse(((upBytes + dlBytes) / 1073741824).toStringAsFixed(1));
+          if (tot > 0) {
+            total = double.parse((tot / 1073741824).toStringAsFixed(1));
+            used = double.parse(((up + dl) / 1073741824).toStringAsFixed(1));
           }
-          if (expireUnix != null) {
-            final expDate = DateTime.fromMillisecondsSinceEpoch(expireUnix * 1000);
-            final diff = expDate.difference(DateTime.now()).inDays;
+          if (expUnix != null) {
+            final diff = DateTime.fromMillisecondsSinceEpoch(expUnix * 1000)
+                .difference(DateTime.now())
+                .inDays;
             expDays = diff >= 0 ? diff : 0;
           }
         }
@@ -1432,27 +1175,21 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
         final newProfiles = <VpnProfile>[];
 
         for (var l in lines) {
-          final p = AndroidHybridConfigBuilder.parseProfile(l, targetSubId, newProfiles.length + 1);
+          final p = PureV2RayParser.parseUri(
+              l, targetSubId, newProfiles.length + 1);
           if (p != null) {
-            final gm = RegExp(r'(\d+(?:\.\d+)?)\s*GB', caseSensitive: false).allMatches(p.name).toList();
+            final gm = RegExp(r'(\d+(?:\.\d+)?)\s*GB', caseSensitive: false)
+                .allMatches(p.name)
+                .toList();
             if (total == 0.0 && gm.isNotEmpty) {
-              if (gm.length >= 2) {
-                used = double.tryParse(gm[0].group(1)!) ?? used;
-                total = double.tryParse(gm[1].group(1)!) ?? total;
-              } else {
-                total = double.tryParse(gm[0].group(1)!) ?? total;
-              }
-            }
-            final dm = RegExp(r'(\d+)\s*(?:روز|Days?|d\b)', caseSensitive: false).firstMatch(p.name);
-            if (expDays == null && dm != null) {
-              expDays = int.tryParse(dm.group(1)!);
+              total = double.tryParse(gm.last.group(1)!) ?? total;
             }
             newProfiles.add(p);
           }
         }
 
         if (newProfiles.isEmpty) {
-          _notify(tr('هیچ سروری در این لینک یافت نشد', 'No servers found in subscription'));
+          _notify(tr('No servers found in link', 'سروری در این لینک یافت نشد'));
           setState(() => isSyncingSub = false);
           return;
         }
@@ -1481,178 +1218,199 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
         });
 
         await _saveData();
-        _notify(tr('✦ اشتراک «$finalTitle» با ${newProfiles.length} سرور بروزرسانی شد!', '✦ Synced $finalTitle (${newProfiles.length} nodes)'));
-        testAllPings();
+        _notify(tr('Updated $finalTitle (${newProfiles.length} servers)',
+            'اشتراک $finalTitle بروزرسانی شد (${newProfiles.length} سرور)'));
+        pingAllServers();
       }
     } catch (_) {
-      _notify(tr('خطا در دریافت لینک اشتراک', 'Subscription sync failed'));
+      _notify(tr('Subscription update failed', 'خطا در دریافت اشتراک'));
     }
     if (mounted) setState(() => isSyncingSub = false);
   }
 
   void _notify(String msg) {
     if (!mounted) return;
-    final pal = currentPalette;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: const Color(0xFF0E1526),
+        backgroundColor: const Color(0xFF0B162C),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: pal.secondary.withOpacity(0.55)),
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: const Color(0xFF00A3FF).withOpacity(0.5)),
         ),
         duration: const Duration(seconds: 2),
-        content: Text(msg, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+        content: Text(msg,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final pal = currentPalette;
     return Directionality(
       textDirection: isFa ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        body: GestureDetector(
-          onPanUpdate: (d) => setState(() => _touchPosition = d.localPosition),
-          child: Stack(
-            children: [
-              // هاله‌های نوری پس‌زمینه
-              Positioned(
-                top: -90,
-                right: -60,
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [(isConnected ? pal.secondary : pal.primary).withOpacity(0.26), Colors.transparent],
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -90,
-                left: -60,
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [(gamingMode ? const Color(0xFFFF2E93) : pal.glow).withOpacity(0.20), Colors.transparent],
-                    ),
-                  ),
-                ),
-              ),
-
-              // ذرات معلق جمینای
-              Positioned.fill(
-                child: AnimatedBuilder(
-                  animation: _particleController,
-                  builder: (context, _) => CustomPaint(
-                    painter: GeminiParticlePainter(
-                      particles: _particles,
-                      progress: _particleController.value,
-                      isConnected: isConnected,
-                      isGaming: gamingMode,
-                      touchPos: _touchPosition,
-                      palette: pal,
-                    ),
-                  ),
-                ),
-              ),
-
-              SafeArea(
-                child: Column(
-                  children: [
-                    // هدر مشترک بالای صفحه با لوگوی فانوس زیبا
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      child: _buildTopHeader(pal),
-                    ),
-
-                    // محتوای تب فعال
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 240),
-                        child: currentBottomTab == 0
-                            ? _buildDashboardTab(pal)
-                            : _buildServersAndSubsTab(pal),
-                      ),
-                    ),
-
-                    // نوار ناوبری شیشه‌ای ۲ تبه در پایین صفحه
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                      child: _buildBottomGlassNav(pal),
-                    ),
+        backgroundColor: const Color(0xFF030712),
+        body: Stack(
+          children: [
+            // پس‌زمینه گرادینت سرمه‌ای کهکشانی (مطابق هر دو عکس)
+            Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0.0, -0.25),
+                  radius: 1.1,
+                  colors: [
+                    Color(0xFF0B1D3A),
+                    Color(0xFF050B18),
+                    Color(0xFF02050D),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+
+            SafeArea(
+              child: Column(
+                children: [
+                  // ۱. هدر بالای صفحه (مطابق عکس اول و دوم)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 10, 18, 6),
+                    child: _buildTopBar(),
+                  ),
+
+                  // ۲. محتوای تب فعال
+                  Expanded(
+                    child: IndexedStack(
+                      index: currentTab,
+                      children: [
+                        _buildHomeTab(),
+                        _buildServersTab(),
+                        _buildSettingsTab(),
+                      ],
+                    ),
+                  ),
+
+                  // ۳. نوار ناوبری پایین صفحه (مطابق عکس اول و دوم)
+                  _buildBottomNavBar(),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // ==================== هدر بالا با لوگوی فانوس ====================
-  Widget _buildTopHeader(NeonThemePalette pal) {
+  // ==================== هدر بالا (لوگوی سپر + نام + دکمه Update و Add) ====================
+  Widget _buildTopBar() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            Container(
-              width: 42,
-              height: 42,
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [pal.primary, pal.glow, pal.secondary],
-                ),
-                boxShadow: [
-                  BoxShadow(color: pal.primary.withOpacity(0.45), blurRadius: 14),
-                ],
-              ),
-              child: CustomPaint(painter: LanternLogoPainter()),
+            SizedBox(
+              width: 38,
+              height: 38,
+              child: CustomPaint(painter: ShieldLightningLogoPainter()),
             ),
             const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Lantern 3D',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17.5, letterSpacing: 0.4),
+                RichText(
+                  text: const TextSpan(
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.3),
+                    children: [
+                      TextSpan(
+                          text: 'Lantern',
+                          style: TextStyle(color: Colors.white)),
+                      TextSpan(
+                          text: 'Net',
+                          style: TextStyle(color: Color(0xFF00A3FF))),
+                    ],
+                  ),
                 ),
                 Text(
-                  isFa ? pal.nameFa : pal.nameEn,
-                  style: TextStyle(fontSize: 10, color: pal.secondary, fontWeight: FontWeight.bold),
+                  tr('Your Freedom, Our Priority', 'آزادی آنلاین و بدون مرز'),
+                  style: const TextStyle(
+                      fontSize: 10.5,
+                      color: Color(0xFF6C88B5),
+                      fontWeight: FontWeight.w500),
                 ),
               ],
             ),
           ],
         ),
+
+        // دکمه کپسولی Update (با نقطه قرمز) + دکمه افزودن سریع
         Row(
           children: [
-            _buildTactile3DButton(
-              icon: Icons.add_link_rounded,
-              label: tr('افزودن', 'Add'),
-              pal: pal,
-              onTap: () => _showUnifiedAddDialog(initialTab: 0),
+            GestureDetector(
+              onTap: updateActiveSubscription,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0A1428).withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: const Color(0xFF1E3A6D).withOpacity(0.7)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isSyncingSub)
+                      const SizedBox(
+                        width: 13,
+                        height: 13,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Color(0xFF00C2FF)),
+                      )
+                    else
+                      const Icon(Icons.sync_rounded,
+                          size: 15, color: Color(0xFF00C2FF)),
+                    const SizedBox(width: 6),
+                    Text(
+                      tr('Update', 'بروزرسانی'),
+                      style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF3B5C),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(width: 8),
-            _buildTactile3DButton(
-              icon: Icons.settings_suggest_rounded,
-              label: tr('تنظیمات', 'Settings'),
-              pal: pal,
-              onTap: _openSettingsModal,
+            GestureDetector(
+              onTap: _showAddSubscriptionModal,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0A1428).withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: const Color(0xFF1E3A6D).withOpacity(0.7)),
+                ),
+                child: const Icon(Icons.add_rounded,
+                    size: 18, color: Color(0xFF00C2FF)),
+              ),
             ),
           ],
         ),
@@ -1660,803 +1418,550 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
     );
   }
 
-  // ==================== تب اول: داشبورد اتصال (Spatial Hub) ====================
-  Widget _buildDashboardTab(NeonThemePalette pal) {
-    final VpnProfile? current = (profiles.isNotEmpty && activeIdx < profiles.length) ? profiles[activeIdx] : null;
-    final engineLabels = ['🛡️ TUN', '🌐 Proxy', '⚡ Fragment', '🔌 Hotspot'];
+  // ==================== تب اول: HOME (ترکیب دقیق عکس ۱ و عکس ۲) ====================
+  Widget _buildHomeTab() {
+    final VpnProfile? current =
+        (profiles.isNotEmpty && activeIdx < profiles.length)
+            ? profiles[activeIdx]
+            : null;
 
-    return Padding(
-      key: const ValueKey('tab_dashboard'),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: _box3DDecoration(pal),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              children: [
-                // ۴ حالت موتور اتصال
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF060913),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Row(
-                    children: List.generate(engineLabels.length, (i) {
-                      final active = engineMode == i;
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => engineMode = i);
-                            _saveData();
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(vertical: 7),
-                            decoration: BoxDecoration(
-                              gradient: active ? LinearGradient(colors: [pal.primary, pal.primary.withOpacity(0.65)]) : null,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              engineLabels[i],
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: active ? Colors.white : Colors.white54),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-                const SizedBox(height: 10),
+    // حداکثر ۵ سرور برتر برای بخش Quick Connect پایین صفحه
+    final List<VpnProfile> quickList = profiles.take(5).toList();
 
-                // دکمه گیمینگ
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    setState(() => gamingMode = !gamingMode);
-                    _saveData();
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: gamingMode
-                          ? LinearGradient(colors: [const Color(0xFFFF2E93).withOpacity(0.25), pal.primary.withOpacity(0.18)])
-                          : null,
-                      color: gamingMode ? null : const Color(0xFF090D19),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: gamingMode ? const Color(0xFFFF2E93).withOpacity(0.75) : Colors.white12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.sports_esports_rounded, size: 19, color: gamingMode ? const Color(0xFFFF2E93) : Colors.white54),
-                            const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tr('حالت گیمینگ و پینگ پایدار', 'Gaming Zero-Jitter Mode'),
-                                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5, color: gamingMode ? Colors.white : Colors.white70),
-                                ),
-                                Text(
-                                  gamingMode ? 'TCP NoDelay • Jitter: ${current?.jitter ?? 3} ms' : tr('غیرفعال', 'OFF'),
-                                  style: const TextStyle(fontSize: 9.5, color: Colors.white54),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: gamingMode ? const Color(0xFFFF2E93) : Colors.white12,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(gamingMode ? 'ON ⚡' : 'OFF', style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Colors.white)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // گوی راکتور سه‌بعدی در مرکز
-            Column(
-              children: [
-                GestureDetector(
-                  onTap: toggleConnection,
-                  child: SizedBox(
-                    width: 172,
-                    height: 172,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        AnimatedBuilder(
-                          animation: _orbController,
-                          builder: (context, _) => Transform.rotate(
-                            angle: _orbController.value * 2 * math.pi,
-                            child: Container(
-                              width: 160,
-                              height: 160,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: SweepGradient(
-                                  colors: isConnected
-                                      ? [pal.secondary, pal.primary, pal.glow, pal.secondary]
-                                      : [pal.primary, pal.glow, pal.secondary, pal.primary],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: (isConnected ? pal.secondary : pal.primary).withOpacity(0.45),
-                                    blurRadius: 28,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: 134,
-                          height: 134,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const RadialGradient(
-                              center: Alignment(-0.35, -0.45),
-                              radius: 1.15,
-                              colors: [Color(0xFF2B395E), Color(0xFF11182B), Color(0xFF060913)],
-                            ),
-                            border: Border.all(color: isConnected ? pal.secondary : Colors.white38, width: 2),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (isBusy)
-                                SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: pal.secondary))
-                              else
-                                Icon(Icons.power_settings_new_rounded, size: 42, color: isConnected ? pal.secondary : Colors.white),
-                              const SizedBox(height: 4),
-                              Text(
-                                isConnected ? connectionDuration : 'CONNECT',
-                                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 1.3, color: isConnected ? pal.secondary : Colors.white70),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // کارت سرور انتخاب‌شده (با قابلیت کلیک برای رفتن به تب سرورها)
-                GestureDetector(
-                  onTap: () => setState(() => currentBottomTab = 1),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF070B16),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: pal.secondary.withOpacity(0.35)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (current != null) ...[
-                          SizedBox(width: 26, height: 18, child: CustomPaint(painter: FlagPainter(current.name))),
-                          const SizedBox(width: 8),
-                        ],
-                        Flexible(
-                          child: Text(
-                            current != null
-                                ? '${current.name} (${current.ping > 0 ? "${current.ping} ms" : current.protocol})'
-                                : tr('انتخاب سرور از لیست...', 'Select Server...'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Icon(Icons.keyboard_arrow_left_rounded, size: 18, color: pal.secondary),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // رادار ضد نشت + سرعت زنده دانلود/آپلود
-            Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF070B16),
-                    borderRadius: BorderRadius.circular(13),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('IP: $verifiedIp', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Colors.white)),
-                            Text(verifiedCountry, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.5, color: Colors.white54)),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: testActiveTunnelDelay,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: pal.secondary.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(9),
-                            border: Border.all(color: pal.secondary.withOpacity(0.45)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isTestingRealDelay)
-                                SizedBox(width: 11, height: 11, child: CircularProgressIndicator(strokeWidth: 2, color: pal.secondary))
-                              else
-                                Icon(Icons.network_check_rounded, size: 13, color: pal.secondary),
-                              const SizedBox(width: 4),
-                              Text(
-                                currentRealDelay > 0 ? '$currentRealDelay ms' : tr('پینگ واقعی', 'True Ping'),
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: pal.secondary),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: _buildSpeedCard3D(title: tr('دانلود', 'Download'), value: '$liveDlMB MB/s', color: pal.secondary, bars: dlWave)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildSpeedCard3D(title: tr('آپلود', 'Upload'), value: '$liveUlMB MB/s', color: pal.glow, bars: ulWave)),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSpeedCard3D({required String title, required String value, required Color color, required List<double> bars}) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: const Color(0xFF080C18), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white10)),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 10, color: Colors.white54)),
-          const SizedBox(height: 2),
-          Text(value, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: color)),
-          const SizedBox(height: 5),
-          SizedBox(
-            height: 10,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: bars
-                  .map((v) => Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 1),
-                          height: isConnected ? (v * 10).clamp(3.0, 10.0) : 3.0,
-                          decoration: BoxDecoration(color: isConnected ? color : Colors.white12, borderRadius: BorderRadius.circular(2)),
+          // ۱. دو کپسول وضعیت در چپ و راست بالای کره زمین (مطابق هر دو عکس)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // کپسول چپ: وضعیت امنیت
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF081226).withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isConnected
+                        ? const Color(0xFF00E676).withOpacity(0.35)
+                        : Colors.white.withOpacity(0.1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.verified_user_outlined,
+                      size: 18,
+                      color: isConnected
+                          ? const Color(0xFF00E676)
+                          : const Color(0xFF6C88B5),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr('Your connection is', 'وضعیت اتصال شما'),
+                          style: const TextStyle(
+                              fontSize: 9.5, color: Color(0xFF7B93B8)),
                         ),
-                      ))
-                  .toList(),
-            ),
+                        Text(
+                          isConnected
+                              ? tr('protected', 'محافظت‌شده')
+                              : tr('not connected', 'متصل نیست'),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: isConnected
+                                ? const Color(0xFF00E676)
+                                : Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // کپسول راست: نمایش آی‌پی و پروتکل
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF081226).withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.signal_cellular_alt_rounded,
+                        size: 18, color: Color(0xFF00B4FF)),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          current != null
+                              ? '${current.protocol} IP'
+                              : tr('VPN IP', 'آی‌پی سرور'),
+                          style: const TextStyle(
+                              fontSize: 9.5, color: Color(0xFF7B93B8)),
+                        ),
+                        Text(
+                          current != null ? current.address : '0.0.0.0',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
 
-  // ==================== تب دوم: سرورها و مدیریت چند اشتراک ====================
-  Widget _buildServersAndSubsTab(NeonThemePalette pal) {
-    final list = displayedProfiles;
-
-    return Padding(
-      key: const ValueKey('tab_servers'),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: _box3DDecoration(pal),
-        child: Column(
-          children: [
-            // ۱. کلید سه‌بعدی «انتخاب دستی 🔒» و «خلبان خودکار 🤖»
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF060912),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => isAutoPilotMode = false);
-                        _saveData();
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
-                        decoration: BoxDecoration(
-                          gradient: !isAutoPilotMode ? LinearGradient(colors: [pal.primary.withOpacity(0.38), pal.primary.withOpacity(0.15)]) : null,
-                          borderRadius: BorderRadius.circular(10),
-                          border: !isAutoPilotMode ? Border.all(color: pal.primary.withOpacity(0.75)) : null,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text('🔒', style: TextStyle(fontSize: 13)),
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                tr('انتخاب دستی (ثابت)', 'Manual Lock'),
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: !isAutoPilotMode ? Colors.white : Colors.white54),
-                              ),
-                            ),
-                          ],
+          // ۲. کره زمین شبکه‌ای + دکمه پاور نئونی در مرکز (Hero Globe & Power Core)
+          Center(
+            child: GestureDetector(
+              onTap: toggleConnection,
+              child: SizedBox(
+                width: 246,
+                height: 236,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // کره زمین چرخان در پس‌زمینه
+                    Positioned.fill(
+                      child: AnimatedBuilder(
+                        animation: _globeCtrl,
+                        builder: (_, __) => CustomPaint(
+                          painter: CyberGlobePainter(
+                            rotation: _globeCtrl.value,
+                            isConnected: isConnected,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => isAutoPilotMode = true);
-                        _selectBestServerForAutoPilot();
-                        _saveData();
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
-                        decoration: BoxDecoration(
-                          gradient: isAutoPilotMode ? LinearGradient(colors: [pal.glow.withOpacity(0.35), pal.secondary.withOpacity(0.18)]) : null,
-                          borderRadius: BorderRadius.circular(10),
-                          border: isAutoPilotMode ? Border.all(color: pal.secondary.withOpacity(0.75)) : null,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text('🤖', style: TextStyle(fontSize: 13)),
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                tr('خلبان خودکار هوشمند', 'Smart Auto-Pilot'),
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: isAutoPilotMode ? Colors.white : Colors.white54),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 9),
 
-            // ۲. نوار افقی کارت‌های اشتراک (با حجم، روز انقضا، آپدیت و حذف)
-            SizedBox(
-              height: 82,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => selectedSubId = 'all'),
-                    child: Container(
-                      width: 90,
-                      margin: const EdgeInsets.only(left: 8),
-                      padding: const EdgeInsets.all(9),
+                    // حلقه شیشه‌ای بیرونی دکمه پاور
+                    Container(
+                      width: 146,
+                      height: 146,
                       decoration: BoxDecoration(
-                        gradient: selectedSubId == 'all' ? LinearGradient(colors: [pal.primary.withOpacity(0.32), pal.secondary.withOpacity(0.15)]) : null,
-                        color: selectedSubId == 'all' ? null : const Color(0xFF0A0F1E),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: selectedSubId == 'all' ? pal.secondary : Colors.white10),
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF050E21).withOpacity(0.78),
+                        border: Border.all(
+                          color: (isConnected
+                                  ? const Color(0xFF00E5FF)
+                                  : const Color(0xFF0088FF))
+                              .withOpacity(0.45),
+                          width: 2.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isConnected
+                                    ? const Color(0xFF00E5FF)
+                                    : const Color(0xFF0088FF))
+                                .withOpacity(0.35),
+                            blurRadius: 28,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // دایره نئونی داخلی دکمه پاور
+                    Container(
+                      width: 122,
+                      height: 122,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const RadialGradient(
+                          colors: [
+                            Color(0xFF0D254C),
+                            Color(0xFF061229),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: isConnected
+                              ? const Color(0xFF00F5D4)
+                              : const Color(0xFF00A3FF),
+                          width: 2.8,
+                        ),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.dns_rounded, size: 18, color: pal.secondary),
-                          const SizedBox(height: 3),
-                          Text(tr('همه سرورها', 'All Nodes'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 10)),
-                          Text('${profiles.length}', style: const TextStyle(fontSize: 9, color: Colors.white54)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  ...subscriptions.map((sub) {
-                    final isSel = selectedSubId == sub.id;
-                    final bool hasTraffic = sub.totalGB > 0;
-                    final double percent = hasTraffic ? (sub.usedGB / sub.totalGB).clamp(0.0, 1.0) : 0.35;
-
-                    return GestureDetector(
-                      onTap: () => setState(() => selectedSubId = sub.id),
-                      child: Container(
-                        width: 195,
-                        margin: const EdgeInsets.only(left: 8),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          gradient: isSel ? LinearGradient(colors: [pal.primary.withOpacity(0.28), pal.glow.withOpacity(0.18)]) : null,
-                          color: isSel ? null : const Color(0xFF0A0F1E),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: isSel ? pal.secondary : Colors.white12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    sub.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
-                                  ),
-                                ),
-                                Row(
-                                  children: [
-                                    InkWell(
-                                      onTap: () => _importSubscription(sub.url, existingSubId: sub.id),
-                                      child: Icon(Icons.sync_rounded, size: 15, color: pal.secondary),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    InkWell(
-                                      onTap: () {
-                                        setState(() {
-                                          subscriptions.removeWhere((s) => s.id == sub.id);
-                                          profiles.removeWhere((p) => p.subId == sub.id);
-                                          if (selectedSubId == sub.id) selectedSubId = 'all';
-                                          activeIdx = 0;
-                                        });
-                                        _saveData();
-                                        _notify(tr('اشتراک حذف شد', 'Subscription deleted'));
-                                      },
-                                      child: const Icon(Icons.delete_outline_rounded, size: 15, color: Color(0xFFFF4D6D)),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      hasTraffic ? '${sub.usedGB} / ${sub.totalGB} GB' : tr('فعال', 'Active'),
-                                      style: const TextStyle(fontSize: 9, color: Colors.white70),
-                                    ),
-                                    Text(
-                                      sub.expireDays != null ? '${sub.expireDays} ${tr("روز", "Days")}' : '∞',
-                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: pal.secondary),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: percent,
-                                    backgroundColor: Colors.white12,
-                                    color: pal.secondary,
-                                    minHeight: 4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            const SizedBox(height: 9),
-
-            // ۳. کادر جستجو و دکمه‌های پینگ واقعی / مرتب‌سازی / کلیپ‌بورد
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 34,
-                    child: TextField(
-                      controller: _searchCtrl,
-                      onChanged: (v) => setState(() => searchQuery = v),
-                      style: const TextStyle(fontSize: 11.5),
-                      decoration: InputDecoration(
-                        hintText: tr('جستجوی کشور یا سرور...', 'Search server...'),
-                        hintStyle: const TextStyle(fontSize: 10.5, color: Colors.white38),
-                        prefixIcon: Icon(Icons.search_rounded, size: 16, color: pal.secondary),
-                        filled: true,
-                        fillColor: const Color(0xFF070B16),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 5),
-                _buildTactile3DButton(
-                  icon: Icons.sort_rounded,
-                  label: tr('مرتب', 'Sort'),
-                  pal: pal,
-                  onTap: sortServersByPing,
-                ),
-                const SizedBox(width: 5),
-                _buildTactile3DButton(
-                  icon: Icons.bolt_rounded,
-                  label: isPingingAll ? '...' : tr('پینگ واقعی', 'True Ping'),
-                  pal: pal,
-                  onTap: testAllPings,
-                ),
-                const SizedBox(width: 5),
-                _buildTactile3DButton(
-                  icon: Icons.content_paste_rounded,
-                  label: tr('چسباندن', 'Paste'),
-                  pal: pal,
-                  onTap: smartPasteFromClipboard,
-                ),
-              ],
-            ),
-            const SizedBox(height: 9),
-
-            // ۴. لیست سرورها با پرچم وکتور واقعی
-            Expanded(
-              child: list.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.cloud_queue_rounded, size: 42, color: Colors.white.withOpacity(0.18)),
-                          const SizedBox(height: 8),
-                          Text(
-                            tr('لیست سرورها خالی است', 'Server list is empty'),
-                            style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 12.5),
-                          ),
-                          const SizedBox(height: 10),
-                          _buildGlowingActionBtn(
-                            icon: Icons.content_paste_rounded,
-                            label: tr('چسباندن از کلیپ‌بورد', 'Paste from Clipboard'),
-                            pal: pal,
-                            onTap: smartPasteFromClipboard,
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: list.length,
-                      itemBuilder: (context, index) {
-                        final p = list[index];
-                        final bool selected = (profiles.isNotEmpty && activeIdx < profiles.length) && profiles[activeIdx].id == p.id;
-                        Color pCol = pal.secondary;
-                        if (p.ping > 250) pCol = const Color(0xFFFFB300);
-                        if (p.ping <= 0 || p.ping > 650) pCol = const Color(0xFFFF4D6D);
-
-                        return GestureDetector(
-                          onTap: () async {
-                            final realIndex = profiles.indexWhere((item) => item.id == p.id);
-                            if (realIndex == -1) return;
-                            HapticFeedback.selectionClick();
-                            final wasConn = isConnected;
-                            setState(() {
-                              activeIdx = realIndex;
-                              isAutoPilotMode = false;
-                            });
-                            await _saveData();
-                            if (wasConn) {
-                              await _flutterV2ray.stopV2Ray();
-                              setState(() => isConnected = false);
-                              await Future.delayed(const Duration(milliseconds: 250));
-                              await toggleConnection();
-                            } else {
-                              _notify(tr('🔒 قفل روی «${p.name}»', '🔒 Locked on ${p.name}'));
-                            }
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 7),
-                            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
-                            decoration: BoxDecoration(
-                              gradient: selected
-                                  ? LinearGradient(colors: [pal.primary.withOpacity(0.32), pal.glow.withOpacity(0.18)])
-                                  : const LinearGradient(colors: [Color(0xFF141C32), Color(0xFF0B1120)]),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: selected ? pal.secondary : Colors.white.withOpacity(0.08),
-                                width: selected ? 1.5 : 1,
+                          if (isBusy)
+                            const SizedBox(
+                              width: 30,
+                              height: 30,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.8,
+                                color: Color(0xFF00E5FF),
                               ),
+                            )
+                          else
+                            Icon(
+                              Icons.power_settings_new_rounded,
+                              size: 38,
+                              color: isConnected
+                                  ? const Color(0xFF00F5D4)
+                                  : const Color(0xFF00C2FF),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4)],
-                                  ),
-                                  child: CustomPaint(painter: FlagPainter(p.name)),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Flexible(
-                                            child: Text(
-                                              p.name,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
-                                            ),
-                                          ),
-                                          if (p.isGameReady) ...[
-                                            const SizedBox(width: 5),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFFF2E93).withOpacity(0.2),
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: const Text('🎯 GAME', style: TextStyle(fontSize: 7.5, fontWeight: FontWeight.w900, color: Color(0xFFFF85B3))),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${p.protocol} • ${p.address}:${p.port}',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 9.5, color: Colors.white54),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () => testTrueCorePing(p),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black38,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: p.ping > 0 ? pCol.withOpacity(0.4) : Colors.white10),
-                                    ),
-                                    child: p.isPinging
-                                        ? SizedBox(width: 11, height: 11, child: CircularProgressIndicator(strokeWidth: 2, color: pal.secondary))
-                                        : Text(
-                                            p.ping > 0 ? '${p.ping} ms' : (p.ping == -2 ? 'Timeout' : 'Ping'),
-                                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: p.ping > 0 ? pCol : Colors.white38),
-                                          ),
-                                  ),
-                                ),
-                                IconButton(
-                                  visualDensity: VisualDensity.compact,
-                                  icon: const Icon(Icons.qr_code_2_rounded, size: 17, color: Colors.white54),
-                                  onPressed: () => _showServerQrModal(p),
-                                ),
-                                IconButton(
-                                  visualDensity: VisualDensity.compact,
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.white38),
-                                  onPressed: () {
-                                    setState(() {
-                                      profiles.removeWhere((item) => item.id == p.id);
-                                      if (activeIdx >= profiles.length) activeIdx = 0;
-                                    });
-                                    _saveData();
-                                  },
-                                ),
-                              ],
+                          const SizedBox(height: 5),
+                          Text(
+                            isConnected
+                                ? tr('Connected', 'متصل شد')
+                                : tr('Tap to Connect', 'اتصال'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
                             ),
                           ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ==================== نوار ناوبری شیشه‌ای پایین صفحه (۲ تب) ====================
-  Widget _buildBottomGlassNav(NeonThemePalette pal) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0F1F).withOpacity(0.95),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: pal.secondary.withOpacity(0.22)),
-        boxShadow: const [BoxShadow(color: Colors.black87, blurRadius: 18, offset: Offset(0, 6))],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => currentBottomTab = 0);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: currentBottomTab == 0 ? LinearGradient(colors: [pal.primary, pal.glow.withOpacity(0.75)]) : null,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.radar_rounded, size: 18, color: currentBottomTab == 0 ? Colors.white : Colors.white54),
-                    const SizedBox(width: 7),
-                    Text(
-                      tr('داشبورد و اتصال', 'Spatial Hub'),
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: currentBottomTab == 0 ? Colors.white : Colors.white54),
+                          const SizedBox(height: 2),
+                          Text(
+                            isConnected ? connectionDuration : '00:00:00',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6C88B5),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => currentBottomTab = 1);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: currentBottomTab == 1 ? LinearGradient(colors: [pal.primary, pal.glow.withOpacity(0.75)]) : null,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.dns_rounded, size: 18, color: currentBottomTab == 1 ? Colors.white : Colors.white54),
-                    const SizedBox(width: 7),
-                    Text(
-                      tr('سرورها و اشتراک‌ها (${profiles.length})', 'Servers (${profiles.length})'),
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: currentBottomTab == 1 ? Colors.white : Colors.white54),
+
+          const SizedBox(height: 6),
+
+          // ۳. کارت سرور انتخاب‌شده (Selected Server Card مطابق عکس اول)
+          GestureDetector(
+            onTap: () => setState(() => currentTab = 1),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: _glassCardDecoration(glowBottom: true),
+              child: Row(
+                children: [
+                  CircularFlagWidget(
+                    name: current?.name ?? 'USA',
+                    size: 40,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                current?.name ??
+                                    tr('Tap to Add / Select Server',
+                                        'افزودن یا انتخاب سرور'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text('👑', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          current != null
+                              ? '${current.protocol} - Optimal Tunnel'
+                              : tr('No server configured yet',
+                                  'هنوز سروری وارد نشده است'),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF00B4FF),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF060E1F),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.signal_cellular_alt_rounded,
+                            size: 15, color: Color(0xFF00E676)),
+                        const SizedBox(width: 5),
+                        Text(
+                          (current != null && current.ping > 0)
+                              ? '${current.ping} ms'
+                              : 'Ping',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right_rounded,
+                            size: 16, color: Color(0xFF6C88B5)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ۴. نوار یکپارچه ۳ تایی سرعت و پینگ (از عکس دوم برای خلوت و شیک ماندن صفحه)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            decoration: _glassCardDecoration(),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildMetricItem(
+                    icon: Icons.arrow_downward_rounded,
+                    iconColor: const Color(0xFF00B4FF),
+                    title: tr('Download', 'دانلود'),
+                    value: '$dlMbps',
+                    unit: 'Mbps',
+                  ),
+                ),
+                Container(width: 1, height: 32, color: Colors.white10),
+                Expanded(
+                  child: _buildMetricItem(
+                    icon: Icons.arrow_upward_rounded,
+                    iconColor: const Color(0xFF00E676),
+                    title: tr('Upload', 'آپلود'),
+                    value: '$ulMbps',
+                    unit: 'Mbps',
+                  ),
+                ),
+                Container(width: 1, height: 32, color: Colors.white10),
+                Expanded(
+                  child: _buildMetricItem(
+                    icon: Icons.access_time_rounded,
+                    iconColor: const Color(0xFF8B9DC3),
+                    title: tr('Latency', 'پینگ'),
+                    value: (current != null && current.ping > 0)
+                        ? '${current.ping}'
+                        : '--',
+                    unit: 'ms',
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ۵. کارت Auto Select (مطابق عکس اول)
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => autoSelectBest = !autoSelectBest);
+              if (autoSelectBest) sortServersByPing();
+              _saveData();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: _glassCardDecoration(),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF0088FF).withOpacity(0.18),
+                      border: Border.all(
+                          color: const Color(0xFF00A3FF).withOpacity(0.5)),
+                    ),
+                    child: const Icon(Icons.bolt_rounded,
+                        color: Color(0xFF00C2FF), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr('Auto Select', 'انتخاب هوشمند خودکار'),
+                          style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white),
+                        ),
+                        Text(
+                          tr('Best server for your location',
+                              'اتصال خودکار به سریع‌ترین سرور'),
+                          style: const TextStyle(
+                              fontSize: 11, color: Color(0xFF7B93B8)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: autoSelectBest,
+                    activeColor: const Color(0xFF00C2FF),
+                    onChanged: (v) {
+                      setState(() => autoSelectBest = v);
+                      if (v) sortServersByPing();
+                      _saveData();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // ۶. ردیف افقی Quick Connect (امکان قرار دادن و سوییچ سریع بین چند سرور مطابق عکس اول)
+          Row(
+            children: [
+              const Icon(Icons.bolt_rounded,
+                  size: 18, color: Color(0xFF00B4FF)),
+              const SizedBox(width: 4),
+              Text(
+                tr('Quick Connect', 'اتصال سریع سرورها'),
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 9),
+
+          SizedBox(
+            height: 86,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                ...List.generate(quickList.length, (index) {
+                  final item = quickList[index];
+                  final isSel = current?.id == item.id;
+                  return GestureDetector(
+                    onTap: () => connectToSpecificProfile(item),
+                    child: Container(
+                      width: 74,
+                      margin: const EdgeInsets.only(right: 9),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF091326),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSel
+                              ? const Color(0xFF00B4FF)
+                              : Colors.white.withOpacity(0.09),
+                          width: isSel ? 1.6 : 1.0,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularFlagWidget(name: item.name, size: 30),
+                          const SizedBox(height: 6),
+                          Text(
+                            item.shortCountryLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (index == 0) ...[
+                            const SizedBox(height: 2),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0066FF),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Fastest',
+                                style: TextStyle(
+                                    fontSize: 7.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+
+                // کارت More / Add برای رفتن به لیست کامل یا افزودن سرور جدید
+                GestureDetector(
+                  onTap: () => setState(() => currentTab = 1),
+                  child: Container(
+                    width: 74,
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF091326),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withOpacity(0.09)),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.06),
+                          ),
+                          child: const Icon(Icons.more_horiz_rounded,
+                              color: Color(0xFF00B4FF), size: 18),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          tr('More', 'بیشتر'),
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -2464,184 +1969,856 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
     );
   }
 
-  // ==================== دیالوگ افزودن ۳ حالته ====================
-  void _showUnifiedAddDialog({int initialTab = 0}) {
-    final urlCtrl = TextEditingController();
-    final nameCtrl = TextEditingController();
-    int tab = initialTab;
-    final pal = currentPalette;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Directionality(
-          textDirection: isFa ? TextDirection.rtl : TextDirection.ltr,
-          child: AlertDialog(
-            backgroundColor: const Color(0xFF0E1526),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
-              side: BorderSide(color: pal.secondary.withOpacity(0.35)),
+  Widget _buildMetricItem({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+    required String unit,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: iconColor.withOpacity(0.14),
+          ),
+          child: Icon(icon, size: 15, color: iconColor),
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 10, color: Color(0xFF7B93B8)),
             ),
-            title: Text(
-              tr('➕ افزودن اشتراک، کلیپ‌بورد یا QR', '➕ Add Subscription / Config'),
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+            RichText(
+              text: TextSpan(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: const Color(0xFF060913), borderRadius: BorderRadius.circular(12)),
-                    child: Row(
+                  TextSpan(
+                    text: '$value ',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                  TextSpan(
+                    text: unit,
+                    style: const TextStyle(
+                      fontSize: 9.5,
+                      color: Color(0xFF7B93B8),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ==================== تب دوم: SERVERS (مدیریت چند اشتراک و سرورها) ====================
+  Widget _buildServersTab() {
+    final list = filteredProfiles;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ۱. کارت‌های افقی اشتراک‌ها (Multi-Subscription Deck با نمایش حجم و روز)
+          SizedBox(
+            height: 78,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                GestureDetector(
+                  onTap: () => setState(() => selectedSubId = 'all'),
+                  child: Container(
+                    width: 88,
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: selectedSubId == 'all'
+                          ? const Color(0xFF0066FF).withOpacity(0.28)
+                          : const Color(0xFF091326),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: selectedSubId == 'all'
+                            ? const Color(0xFF00B4FF)
+                            : Colors.white10,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildDialogTabBtn(title: tr('🔗 اشتراک', '🔗 Sub'), active: tab == 0, pal: pal, onTap: () => setModalState(() => tab = 0)),
-                        _buildDialogTabBtn(title: tr('📋 کلیپ‌بورد', '📋 Paste'), active: tab == 1, pal: pal, onTap: () => setModalState(() => tab = 1)),
-                        _buildDialogTabBtn(title: '📷 QR', active: tab == 2, pal: pal, onTap: () => setModalState(() => tab = 2)),
+                        const Icon(Icons.dns_rounded,
+                            size: 18, color: Color(0xFF00C2FF)),
+                        const SizedBox(height: 4),
+                        Text(
+                          tr('All (${profiles.length})',
+                              'همه (${profiles.length})'),
+                          style: const TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.w800),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (tab == 0) ...[
-                    TextField(
-                      controller: nameCtrl,
-                      style: const TextStyle(fontSize: 12, color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: tr('نام دلخواه اشتراک (اختیاری)', 'Custom Name (Optional)'),
-                        labelStyle: const TextStyle(fontSize: 11, color: Colors.white54),
-                        filled: true,
-                        fillColor: const Color(0xFF070A14),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                ...subscriptions.map((sub) {
+                  final isSel = selectedSubId == sub.id;
+                  final hasTraffic = sub.totalGB > 0;
+                  final pct = hasTraffic
+                      ? (sub.usedGB / sub.totalGB).clamp(0.0, 1.0)
+                      : 0.3;
+
+                  return GestureDetector(
+                    onTap: () => setState(() => selectedSubId = sub.id),
+                    child: Container(
+                      width: 195,
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isSel
+                            ? const Color(0xFF0066FF).withOpacity(0.22)
+                            : const Color(0xFF091326),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSel
+                              ? const Color(0xFF00B4FF)
+                              : Colors.white12,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: urlCtrl,
-                      maxLines: 3,
-                      style: const TextStyle(fontSize: 12, color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'https://...\nvless://...\nvmess://...',
-                        hintStyle: const TextStyle(color: Colors.white30),
-                        filled: true,
-                        fillColor: const Color(0xFF070A14),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: const Color(0xFF070A14), borderRadius: BorderRadius.circular(14)),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(tab == 1 ? Icons.content_paste_go_rounded : Icons.qr_code_scanner_rounded, size: 36, color: pal.secondary),
-                          const SizedBox(height: 8),
-                          Text(
-                            tr('دریافت هوشمند از کلیپ‌بورد اندروید', 'Smart Import from Clipboard'),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  sub.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 11.5),
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  InkWell(
+                                    onTap: () => _importSubscription(sub.url,
+                                        existingSubId: sub.id),
+                                    child: const Icon(Icons.sync_rounded,
+                                        size: 15, color: Color(0xFF00C2FF)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        subscriptions
+                                            .removeWhere((s) => s.id == sub.id);
+                                        profiles.removeWhere(
+                                            (p) => p.subId == sub.id);
+                                        if (selectedSubId == sub.id) {
+                                          selectedSubId = 'all';
+                                        }
+                                        activeIdx = 0;
+                                      });
+                                      _saveData();
+                                    },
+                                    child: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 15,
+                                        color: Color(0xFFFF4D6D)),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          _buildGlowingActionBtn(
-                            icon: Icons.paste_rounded,
-                            label: tr('چسباندن و بررسی آنی', 'Paste & Import Now'),
-                            pal: pal,
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              smartPasteFromClipboard();
-                            },
+                          Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    hasTraffic
+                                        ? '${sub.usedGB} / ${sub.totalGB} GB'
+                                        : tr('Active Plan', 'اشتراک فعال'),
+                                    style: const TextStyle(
+                                        fontSize: 9.5,
+                                        color: Color(0xFF8B9DC3)),
+                                  ),
+                                  Text(
+                                    sub.expireDays != null
+                                        ? '${sub.expireDays}d'
+                                        : '∞',
+                                    style: const TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF00E5FF)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3),
+                                child: LinearProgressIndicator(
+                                  value: pct,
+                                  minHeight: 3.5,
+                                  backgroundColor: Colors.white12,
+                                  color: const Color(0xFF00C2FF),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ],
-              ),
+                  );
+                }),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(tr('انصراف', 'Cancel'), style: const TextStyle(color: Colors.white70)),
-              ),
-              if (tab == 0)
-                _buildGlowingActionBtn(
-                  icon: Icons.check_circle_outline_rounded,
-                  label: tr('تأیید و افزودن', 'Confirm & Add'),
-                  pal: pal,
-                  onTap: () {
-                    final raw = urlCtrl.text.trim();
-                    final customName = nameCtrl.text.trim();
-                    Navigator.pop(ctx);
-                    if (raw.isEmpty) return;
-                    if (raw.startsWith('http://') || raw.startsWith('https://')) {
-                      _importSubscription(raw, customTitle: customName);
-                    } else {
-                      _importDirectConfigs(raw, subId: 'manual');
-                    }
-                  },
+          ),
+
+          const SizedBox(height: 10),
+
+          // ۲. نوار جستجو + دکمه پینگ، مرتب‌سازی و چسباندن از کلیپ‌بورد
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 38,
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: (v) => setState(() => searchQuery = v),
+                    style: const TextStyle(fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: tr('Search servers...', 'جستجوی سرور...'),
+                      hintStyle: const TextStyle(
+                          fontSize: 11.5, color: Color(0xFF6C88B5)),
+                      prefixIcon: const Icon(Icons.search_rounded,
+                          size: 17, color: Color(0xFF00B4FF)),
+                      filled: true,
+                      fillColor: const Color(0xFF091326),
+                      contentPadding: EdgeInsets.zero,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: Colors.white.withOpacity(0.08)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: Colors.white.withOpacity(0.08)),
+                      ),
+                    ),
+                  ),
                 ),
+              ),
+              const SizedBox(width: 6),
+              _buildActionChip(
+                icon: Icons.bolt_rounded,
+                label: isPingingAll ? '...' : tr('Ping', 'پینگ'),
+                onTap: pingAllServers,
+              ),
+              const SizedBox(width: 6),
+              _buildActionChip(
+                icon: Icons.sort_rounded,
+                label: tr('Sort', 'مرتب'),
+                onTap: sortServersByPing,
+              ),
+              const SizedBox(width: 6),
+              _buildActionChip(
+                icon: Icons.content_paste_rounded,
+                label: tr('Paste', 'چسباندن'),
+                onTap: pasteFromClipboard,
+              ),
             ],
           ),
+
+          const SizedBox(height: 10),
+
+          // ۳. لیست کامل سرورها
+          Expanded(
+            child: list.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.dns_outlined,
+                            size: 42, color: Color(0xFF3B5278)),
+                        const SizedBox(height: 8),
+                        Text(
+                          tr('No servers added yet', 'هنوز سروری اضافه نشده'),
+                          style: const TextStyle(
+                              color: Color(0xFF7B93B8),
+                              fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0077FF),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: _showAddSubscriptionModal,
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: Text(
+                              tr('Add Subscription / Config', 'افزودن اشتراک')),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: list.length,
+                    itemBuilder: (context, index) {
+                      final p = list[index];
+                      final isSel =
+                          (profiles.isNotEmpty && activeIdx < profiles.length) &&
+                              profiles[activeIdx].id == p.id;
+
+                      Color pingColor = const Color(0xFF00E676);
+                      if (p.ping > 250) pingColor = const Color(0xFFFFB300);
+                      if (p.ping <= 0) pingColor = const Color(0xFFFF4D6D);
+
+                      return GestureDetector(
+                        onTap: () => connectToSpecificProfile(p),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 11),
+                          decoration: BoxDecoration(
+                            color: isSel
+                                ? const Color(0xFF0D2142)
+                                : const Color(0xFF081224),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSel
+                                  ? const Color(0xFF00B4FF)
+                                  : Colors.white.withOpacity(0.07),
+                              width: isSel ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              CircularFlagWidget(name: p.name, size: 34),
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      p.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${p.protocol} • ${p.address}:${p.port}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 10.5,
+                                        color: Color(0xFF6C88B5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => pingSingleServer(p),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 9, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF040915),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: p.isPinging
+                                      ? const SizedBox(
+                                          width: 12,
+                                          height: 12,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Color(0xFF00C2FF)),
+                                        )
+                                      : Text(
+                                          p.ping > 0
+                                              ? '${p.ping} ms'
+                                              : (p.ping == -2
+                                                  ? 'Timeout'
+                                                  : 'Ping'),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: p.ping > 0
+                                                ? pingColor
+                                                : const Color(0xFF6C88B5),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                icon: const Icon(Icons.delete_outline_rounded,
+                                    size: 17, color: Color(0xFF6C88B5)),
+                                onPressed: () {
+                                  setState(() {
+                                    profiles
+                                        .removeWhere((item) => item.id == p.id);
+                                    if (activeIdx >= profiles.length) {
+                                      activeIdx = 0;
+                                    }
+                                  });
+                                  _saveData();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF091326),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 15, color: const Color(0xFF00C2FF)),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildDialogTabBtn({required String title, required bool active, required NeonThemePalette pal, required VoidCallback onTap}) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          decoration: BoxDecoration(
-            gradient: active ? LinearGradient(colors: [pal.primary, pal.primary.withOpacity(0.7)]) : null,
-            borderRadius: BorderRadius.circular(9),
+  // ==================== تب سوم: SETTINGS (کارت‌های سوییچ‌دار مطابق عکس دوم + زبان فارسی) ====================
+  Widget _buildSettingsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tr('Preferences & Security', 'تنظیمات و امنیت'),
+            style: const TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
           ),
-          child: Text(
+          const SizedBox(height: 12),
+
+          // انتخاب زبان (English Default / فارسی)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: _glassCardDecoration(),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.language_rounded,
+                        color: Color(0xFF00B4FF), size: 22),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr('App Language', 'زبان برنامه'),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 13.5),
+                        ),
+                        Text(
+                          isFa ? 'فارسی (Persian)' : 'English (Default)',
+                          style: const TextStyle(
+                              fontSize: 11, color: Color(0xFF7B93B8)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'en', label: Text('EN')),
+                    ButtonSegment(value: 'fa', label: Text('فا')),
+                  ],
+                  selected: {appLang},
+                  onSelectionChanged: (s) {
+                    setState(() => appLang = s.first);
+                    _saveData();
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // کارت‌های سوییچ‌دار دقیقاً مشابه پایین عکس دوم
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 1.45,
+            children: [
+              _buildGridSwitchTile(
+                icon: Icons.bolt_rounded,
+                title: tr('Auto Connect', 'اتصال هوشمند'),
+                value: autoSelectBest,
+                onChanged: (v) {
+                  setState(() => autoSelectBest = v);
+                  _saveData();
+                },
+              ),
+              _buildGridSwitchTile(
+                icon: Icons.alt_route_rounded,
+                title: tr('Split Tunneling', 'معافیت ایران'),
+                value: splitTunnelIr,
+                onChanged: (v) {
+                  setState(() => splitTunnelIr = v);
+                  _saveData();
+                },
+              ),
+              _buildGridSwitchTile(
+                icon: Icons.shield_outlined,
+                title: tr('DNS Protection', 'سپر ضد نشت DNS'),
+                value: dnsLeakShield,
+                onChanged: (v) {
+                  setState(() => dnsLeakShield = v);
+                  _saveData();
+                },
+              ),
+              _buildGridSwitchTile(
+                icon: Icons.location_on_outlined,
+                title: tr('IP Hidden', 'مخفی‌سازی آی‌پی'),
+                value: true,
+                onChanged: (_) {},
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // نوار شعار پایین عکس دوم
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: _glassCardDecoration(),
+            child: Row(
+              children: [
+                const Icon(Icons.verified_user_outlined,
+                    size: 18, color: Color(0xFF00B4FF)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    tr('No logs. No tracking. Just your freedom.',
+                        'بدون ذخیره لاگ و بدون ردیابی؛ فقط آزادی آنلاین شما.'),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF8B9DC3),
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridSwitchTile({
+    required IconData icon,
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: _glassCardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF0088FF).withOpacity(0.15),
+            ),
+            child: Icon(icon, size: 17, color: const Color(0xFF00B4FF)),
+          ),
+          Text(
             title,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: active ? Colors.white : Colors.white54),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: Colors.white),
           ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                value ? tr('On', 'فعال') : tr('Off', 'غیرفعال'),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: value
+                      ? const Color(0xFF00E676)
+                      : const Color(0xFF6C88B5),
+                ),
+              ),
+              SizedBox(
+                height: 24,
+                child: Switch(
+                  value: value,
+                  activeColor: const Color(0xFF00A3FF),
+                  onChanged: onChanged,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== نوار ناوبری پایین صفحه (Bottom Bar مطابق عکس ۱ و ۲) ====================
+  Widget _buildBottomNavBar() {
+    return Container(
+      height: 64,
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF070F20).withOpacity(0.95),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.6),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildNavItem(
+              index: 0,
+              icon: Icons.home_filled,
+              label: tr('Home', 'خانه')),
+          _buildNavItem(
+              index: 1,
+              icon: Icons.dns_rounded,
+              label: tr('Servers', 'سرورها')),
+          _buildNavItem(
+              index: 2,
+              icon: Icons.settings_rounded,
+              label: tr('Settings', 'تنظیمات')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
+    final active = currentTab == index;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => currentTab = index);
+      },
+      child: SizedBox(
+        width: 85,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: active ? const Color(0xFF00B4FF) : const Color(0xFF6C88B5),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                color:
+                    active ? const Color(0xFF00B4FF) : const Color(0xFF6C88B5),
+              ),
+            ),
+            const SizedBox(height: 4),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: active ? 28 : 0,
+              height: 2.5,
+              decoration: BoxDecoration(
+                color: const Color(0xFF00B4FF),
+                borderRadius: BorderRadius.circular(2),
+                boxShadow: active
+                    ? [
+                        const BoxShadow(
+                            color: Color(0xFF00B4FF), blurRadius: 6)
+                      ]
+                    : null,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void _showServerQrModal(VpnProfile p) {
-    final pal = currentPalette;
+  // ==================== پنجره افزودن اشتراک یا کانفیگ ====================
+  void _showAddSubscriptionModal() {
+    final nameCtrl = TextEditingController();
+    final linkCtrl = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) => Directionality(
         textDirection: isFa ? TextDirection.rtl : TextDirection.ltr,
         child: AlertDialog(
-          backgroundColor: const Color(0xFF0E1526),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: BorderSide(color: pal.secondary.withOpacity(0.4))),
-          title: Text(p.name, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                child: SizedBox(
-                  width: 165,
-                  height: 165,
-                  child: CustomPaint(painter: VisualQrMatrixPainter(data: p.rawUri, color: const Color(0xFF080C18))),
+          backgroundColor: const Color(0xFF0A1428),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: const Color(0xFF00A3FF).withOpacity(0.4)),
+          ),
+          title: Text(
+            tr('Add Subscription / Config', 'افزودن لینک اشتراک یا کانفیگ'),
+            style: const TextStyle(
+                fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  style: const TextStyle(fontSize: 12.5, color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText:
+                        tr('Subscription Name (Optional)', 'نام دلخواه اشتراک'),
+                    labelStyle: const TextStyle(
+                        fontSize: 11.5, color: Color(0xFF7B93B8)),
+                    filled: true,
+                    fillColor: const Color(0xFF050B18),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text('${p.protocol} • ${p.address}:${p.port}', style: const TextStyle(fontSize: 11, color: Colors.white70)),
-            ],
+                const SizedBox(height: 10),
+                TextField(
+                  controller: linkCtrl,
+                  maxLines: 3,
+                  style: const TextStyle(fontSize: 12.5, color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'https://...\nvless://...\nvmess://...',
+                    hintStyle: const TextStyle(color: Colors.white24),
+                    filled: true,
+                    fillColor: const Color(0xFF050B18),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF00C2FF),
+                      side: const BorderSide(color: Color(0xFF0077FF)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      pasteFromClipboard();
+                    },
+                    icon: const Icon(Icons.content_paste_rounded, size: 16),
+                    label: Text(tr(
+                        'Paste Directly from Clipboard', 'چسباندن از کلیپ‌بورد')),
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('بستن', 'Close'), style: const TextStyle(color: Colors.white70))),
-            _buildGlowingActionBtn(
-              icon: Icons.copy_rounded,
-              label: tr('کپی کانفیگ', 'Copy URI'),
-              pal: pal,
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: p.rawUri));
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(tr('Cancel', 'انصراف'),
+                  style: const TextStyle(color: Color(0xFF8B9DC3))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0077FF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(11)),
+              ),
+              onPressed: () {
+                final raw = linkCtrl.text.trim();
+                final title = nameCtrl.text.trim();
                 Navigator.pop(ctx);
-                _notify(tr('لینک کانفیگ کپی شد', 'Config URI copied'));
+                if (raw.isEmpty) return;
+                if (raw.startsWith('http://') || raw.startsWith('https://')) {
+                  _importSubscription(raw, customTitle: title);
+                } else {
+                  _importDirectLinks(raw, subId: 'manual');
+                }
               },
+              child: Text(tr('Confirm & Add', 'تأیید و افزودن'),
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
             ),
           ],
         ),
@@ -2649,166 +2826,30 @@ class _LanternMobileHomeState extends State<LanternMobileHome>
     );
   }
 
-  void _openSettingsModal() {
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          final pal = currentPalette;
-          return Directionality(
-            textDirection: isFa ? TextDirection.rtl : TextDirection.ltr,
-            child: AlertDialog(
-              backgroundColor: const Color(0xFF0E1526),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-                side: BorderSide(color: pal.secondary.withOpacity(0.35)),
-              ),
-              title: Text(tr('⚙️ تنظیمات و تم نوری', '⚙️ Settings & Theme'), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(tr('🎨 انتخاب تم نوری:', '🎨 Select Neon Theme:'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: NeonThemePalette.palettes.map((item) {
-                        final selected = item.id == themeId;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() => themeId = item.id);
-                            setModalState(() {});
-                            _saveData();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [item.primary.withOpacity(0.35), item.secondary.withOpacity(0.2)]),
-                              borderRadius: BorderRadius.circular(11),
-                              border: Border.all(color: selected ? item.secondary : Colors.white12, width: selected ? 1.8 : 1),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(width: 11, height: 11, decoration: BoxDecoration(shape: BoxShape.circle, color: item.secondary)),
-                                const SizedBox(width: 6),
-                                Text(isFa ? item.nameFa : item.nameEn, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const Divider(height: 20, color: Colors.white12),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(tr('🌍 زبان فارسی / English', '🌍 Language (FA/EN)'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      value: isFa,
-                      activeColor: pal.secondary,
-                      onChanged: (v) {
-                        setState(() => appLang = v ? 'fa' : 'en');
-                        setModalState(() {});
-                        _saveData();
-                      },
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(tr('🛡️ سپر ضد نشت آی‌پی و DNS', '🛡️ Anti-IP & DNS Leak Shield'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      value: strictAntiLeak,
-                      activeColor: pal.secondary,
-                      onChanged: (v) {
-                        setState(() => strictAntiLeak = v);
-                        setModalState(() {});
-                        _saveData();
-                      },
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(tr('🔀 معافیت سایت‌های داخلی (.ir)', '🔀 Bypass Local / .IR Domains'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      value: splitTunnelMode == 1,
-                      activeColor: pal.secondary,
-                      onChanged: (v) {
-                        setState(() => splitTunnelMode = v ? 1 : 0);
-                        setModalState(() {});
-                        _saveData();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildGlowingActionBtn({
-    required IconData icon,
-    required String label,
-    required NeonThemePalette pal,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [pal.primary, pal.secondary.withOpacity(0.85)]),
-          borderRadius: BorderRadius.circular(11),
-          boxShadow: [BoxShadow(color: pal.primary.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 3))],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: Colors.white),
-            const SizedBox(width: 6),
-            Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Colors.white)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  BoxDecoration _box3DDecoration(NeonThemePalette pal) {
+  BoxDecoration _glassCardDecoration({bool glowBottom = false}) {
     return BoxDecoration(
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xCC18223A), Color(0xE60A0F1D)],
+        colors: [
+          Color(0xD90B162C),
+          Color(0xE6060D1D),
+        ],
       ),
-      borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: pal.secondary.withOpacity(0.18)),
-      boxShadow: const [BoxShadow(color: Colors.black87, blurRadius: 24, offset: Offset(0, 10))],
-    );
-  }
-
-  Widget _buildTactile3DButton({
-    required IconData icon,
-    required String label,
-    required NeonThemePalette pal,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF212D4C), Color(0xFF12192B)]),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withOpacity(0.16)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: pal.secondary),
-            const SizedBox(width: 4),
-            Text(label, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white)),
-          ],
-        ),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: glowBottom
+            ? const Color(0xFF00A3FF).withOpacity(0.42)
+            : Colors.white.withOpacity(0.09),
       ),
+      boxShadow: [
+        if (glowBottom)
+          BoxShadow(
+            color: const Color(0xFF0088FF).withOpacity(0.18),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+      ],
     );
   }
 }
