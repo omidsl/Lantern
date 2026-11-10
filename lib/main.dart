@@ -134,7 +134,7 @@ class _CenteredQuickSplashState extends State<CenteredQuickSplash>
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Android Luxury Edition',
+                    'True Core Android Edition',
                     style: TextStyle(
                       fontSize: 11.5,
                       color: Color(0xFF00F5D4),
@@ -255,8 +255,7 @@ class VpnProfile {
   final String protocol;
   final String address;
   final int port;
-  int ping; // -1: تست نشده | -2: خطا/تایم‌اوت | >0: پینگ معتبر
-  int jitter;
+  int ping; // -1: تست نشده | -2: قطع/Timeout | >0: واقعاً متصل و دارای اینترنت
   bool isPinging;
 
   VpnProfile({
@@ -268,11 +267,11 @@ class VpnProfile {
     required this.address,
     required this.port,
     this.ping = -1,
-    this.jitter = 3,
     this.isPinging = false,
   });
 
-  bool get isGameReady => ping > 0 && ping < 150;
+  bool get isTrulyOnline => ping > 0;
+  bool get isGameReady => ping > 0 && ping < 160;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -283,7 +282,6 @@ class VpnProfile {
         'address': address,
         'port': port,
         'ping': ping,
-        'jitter': jitter,
       };
 
   factory VpnProfile.fromJson(Map<String, dynamic> json) => VpnProfile(
@@ -296,7 +294,6 @@ class VpnProfile {
         address: json['address']?.toString() ?? '',
         port: int.tryParse(json['port']?.toString() ?? '443') ?? 443,
         ping: json['ping'] is int ? json['ping'] : -1,
-        jitter: json['jitter'] is int ? json['jitter'] : 3,
       );
 }
 
@@ -574,8 +571,8 @@ class GeminiParticlePainter extends CustomPainter {
   bool shouldRepaint(covariant GeminiParticlePainter oldDelegate) => true;
 }
 
-// ==================== ۶. موتور کانفیگ‌ساز خالص و ۱۰۰٪ منطبق با سرویس اندروید ====================
-class PureAndroidV2RayEngine {
+// ==================== ۶. موتور کانفیگ‌ساز کامل و استاندارد v2rayNG برای اندروید ====================
+class AndroidTrueXrayEngine {
   static String decodeB64(String str) {
     String clean = str.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '+').replaceAll('_', '/');
     while (clean.length % 4 != 0) {
@@ -636,18 +633,342 @@ class PureAndroidV2RayEngine {
     return null;
   }
 
-  /// استخراج ۱۰۰٪ خالص و بدون دستکاری از موتور بومی پلاگین (تضمین اتصال فوری در اندروید)
-  static String getPureNativeConfiguration(String rawUri) {
+  /// ساخت کانفیگ ۱۰۰٪ کامل و سازگار با سرویس VPN اندروید (پشتیبانی کامل از HTTP Header، WS، gRPC، Reality و TLS)
+  static String buildFullAndroidConfiguration(
+    String rawUri, {
+    required bool enableFragment,
+    required bool gamingMode,
+    required bool allowLan,
+  }) {
     final trimmed = rawUri.trim();
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
       return trimmed;
     }
-    final V2RayURL v2rayUrl = FlutterV2ray.parseFromURL(trimmed);
-    return v2rayUrl.getFullConfiguration();
+
+    // ۱. ابتدا دریافت ساختار پایه از پلاگین رسمی برای حفظ دقیق پورت‌های سرویس اندروید
+    Map<String, dynamic> baseConfig;
+    try {
+      final V2RayURL parsed = FlutterV2ray.parseFromURL(trimmed);
+      baseConfig = jsonDecode(parsed.getFullConfiguration());
+    } catch (_) {
+      baseConfig = _createDefaultBaseSkeleton(allowLan: allowLan);
+    }
+
+    // ۲. ساخت Outbound کامل با پشتیبانی از تمام پارامترهایی که پلاگین پیش‌فرض جا می‌اندازد
+    try {
+      Map<String, dynamic>? customOutbound;
+      if (trimmed.startsWith('vless://')) {
+        customOutbound = _buildCompleteVlessOutbound(trimmed, enableFragment: enableFragment, gamingMode: gamingMode);
+      } else if (trimmed.startsWith('vmess://')) {
+        customOutbound = _buildCompleteVmessOutbound(trimmed, enableFragment: enableFragment, gamingMode: gamingMode);
+      } else if (trimmed.startsWith('trojan://')) {
+        customOutbound = _buildCompleteTrojanOutbound(trimmed, enableFragment: enableFragment, gamingMode: gamingMode);
+      }
+
+      if (customOutbound != null && baseConfig['outbounds'] is List && (baseConfig['outbounds'] as List).isNotEmpty) {
+        final List outList = baseConfig['outbounds'] as List;
+        // حفظ تگ اصلی پلاگین (معمولاً proxy)
+        final String origTag = (outList[0] is Map && outList[0]['tag'] != null)
+            ? outList[0]['tag'].toString()
+            : 'proxy';
+        customOutbound['tag'] = origTag;
+        outList[0] = customOutbound;
+
+        if (enableFragment) {
+          final hasFrag = outList.any((o) => o is Map && o['tag'] == 'fragment');
+          if (!hasFrag) {
+            outList.add({
+              'tag': 'fragment',
+              'protocol': 'freedom',
+              'settings': {
+                'domainStrategy': 'AsIs',
+                'fragment': {
+                  'packets': 'tlshello',
+                  'length': '10-20',
+                  'interval': '10-20',
+                }
+              }
+            });
+          }
+        }
+      }
+
+      // ۳. تنظیم DNS ضد فیلتر و ضد تحریم برای باز شدن تضمینی سایت‌ها و دریافت آی‌پی
+      baseConfig['dns'] = {
+        'servers': ['8.8.8.8', '1.1.1.1', 'https://1.1.1.1/dns-query'],
+      };
+    } catch (_) {}
+
+    return jsonEncode(baseConfig);
+  }
+
+  static Map<String, dynamic> _createDefaultBaseSkeleton({required bool allowLan}) {
+    final listenIp = allowLan ? '0.0.0.0' : '127.0.0.1';
+    return {
+      'log': {'loglevel': 'warning'},
+      'inbounds': [
+        {
+          'tag': 'socks',
+          'port': 10808,
+          'listen': listenIp,
+          'protocol': 'socks',
+          'sniffing': {
+            'enabled': true,
+            'destOverride': ['http', 'tls'],
+            'routeOnly': false
+          },
+          'settings': {'auth': 'noauth', 'udp': true, 'userLevel': 8}
+        },
+        {
+          'tag': 'http',
+          'port': 10809,
+          'listen': listenIp,
+          'protocol': 'http',
+          'sniffing': {
+            'enabled': true,
+            'destOverride': ['http', 'tls'],
+            'routeOnly': false
+          },
+          'settings': {'userLevel': 8}
+        }
+      ],
+      'outbounds': [
+        {'tag': 'proxy', 'protocol': 'vless', 'settings': {}},
+        {'tag': 'direct', 'protocol': 'freedom', 'settings': {}},
+        {'tag': 'block', 'protocol': 'blackhole', 'settings': {}}
+      ],
+      'dns': {
+        'servers': ['8.8.8.8', '1.1.1.1']
+      }
+    };
+  }
+
+  static Map<String, dynamic> _buildCompleteVlessOutbound(
+    String link, {
+    required bool enableFragment,
+    required bool gamingMode,
+  }) {
+    final int hashIdx = link.indexOf('#');
+    final String clean = hashIdx != -1 ? link.substring(0, hashIdx) : link;
+    final Uri uri = Uri.parse(clean);
+    final Map<String, String> q = uri.queryParameters;
+
+    return {
+      'tag': 'proxy',
+      'protocol': 'vless',
+      'settings': {
+        'vnext': [
+          {
+            'address': uri.host,
+            'port': uri.port > 0 ? uri.port : 443,
+            'users': [
+              {
+                'id': Uri.decodeComponent(uri.userInfo),
+                'encryption': (q['encryption'] != null && q['encryption']!.isNotEmpty)
+                    ? q['encryption']!
+                    : 'none',
+                'level': 8,
+                if (q['flow'] != null && q['flow']!.isNotEmpty) 'flow': q['flow']!,
+              }
+            ]
+          }
+        ]
+      },
+      'streamSettings': _buildCompleteStreamSettings(
+        q,
+        uri.host,
+        enableFragment: enableFragment,
+        gamingMode: gamingMode,
+      ),
+    };
+  }
+
+  static Map<String, dynamic> _buildCompleteVmessOutbound(
+    String link, {
+    required bool enableFragment,
+    required bool gamingMode,
+  }) {
+    final decoded = decodeB64(link.substring(8));
+    final Map<String, dynamic> m = jsonDecode(decoded);
+    final String address = m['add']?.toString() ?? '';
+    final int port = int.tryParse(m['port']?.toString() ?? '443') ?? 443;
+
+    final Map<String, String> q = {
+      'type': m['net']?.toString() ?? 'tcp',
+      'security': (m['tls']?.toString() == 'tls') ? 'tls' : 'none',
+      'sni': m['sni']?.toString() ?? m['host']?.toString() ?? address,
+      'host': m['host']?.toString() ?? '',
+      'path': m['path']?.toString() ?? '/',
+      'headerType': m['type']?.toString() ?? 'none',
+      'fp': m['fp']?.toString() ?? 'chrome',
+      'alpn': m['alpn']?.toString() ?? '',
+    };
+
+    return {
+      'tag': 'proxy',
+      'protocol': 'vmess',
+      'settings': {
+        'vnext': [
+          {
+            'address': address,
+            'port': port,
+            'users': [
+              {
+                'id': m['id']?.toString() ?? '',
+                'alterId': int.tryParse(m['aid']?.toString() ?? '0') ?? 0,
+                'security': (m['scy'] != null && m['scy'].toString().isNotEmpty)
+                    ? m['scy'].toString()
+                    : 'auto',
+                'level': 8,
+              }
+            ]
+          }
+        ]
+      },
+      'streamSettings': _buildCompleteStreamSettings(
+        q,
+        address,
+        enableFragment: enableFragment,
+        gamingMode: gamingMode,
+      ),
+    };
+  }
+
+  static Map<String, dynamic> _buildCompleteTrojanOutbound(
+    String link, {
+    required bool enableFragment,
+    required bool gamingMode,
+  }) {
+    final int hashIdx = link.indexOf('#');
+    final String clean = hashIdx != -1 ? link.substring(0, hashIdx) : link;
+    final Uri uri = Uri.parse(clean);
+    final Map<String, String> q = Map<String, String>.from(uri.queryParameters);
+    if (!q.containsKey('security')) q['security'] = 'tls';
+
+    return {
+      'tag': 'proxy',
+      'protocol': 'trojan',
+      'settings': {
+        'servers': [
+          {
+            'address': uri.host,
+            'port': uri.port > 0 ? uri.port : 443,
+            'password': Uri.decodeComponent(uri.userInfo),
+            'level': 8,
+          }
+        ]
+      },
+      'streamSettings': _buildCompleteStreamSettings(
+        q,
+        uri.host,
+        enableFragment: enableFragment,
+        gamingMode: gamingMode,
+      ),
+    };
+  }
+
+  static Map<String, dynamic> _buildCompleteStreamSettings(
+    Map<String, String> q,
+    String defaultHost, {
+    required bool enableFragment,
+    required bool gamingMode,
+  }) {
+    final String net = (q['type'] ?? 'tcp').toLowerCase();
+    final String security = (q['security'] ?? 'none').toLowerCase();
+    final String hostHeader = q['host'] ?? '';
+    final String sni = (q['sni'] != null && q['sni']!.isNotEmpty)
+        ? q['sni']!
+        : (hostHeader.isNotEmpty ? hostHeader : defaultHost);
+    final String fp = (q['fp'] != null && q['fp']!.isNotEmpty) ? q['fp']! : 'chrome';
+
+    final Map<String, dynamic> stream = {
+      'network': net,
+      'security': security,
+    };
+
+    if (security == 'tls') {
+      stream['tlsSettings'] = {
+        'allowInsecure': true,
+        'serverName': sni,
+        'fingerprint': fp,
+        if (q['alpn'] != null && q['alpn']!.isNotEmpty)
+          'alpn': q['alpn']!.split(',').map((e) => e.trim()).toList(),
+      };
+    } else if (security == 'reality') {
+      stream['realitySettings'] = {
+        'show': false,
+        'fingerprint': fp,
+        'serverName': sni,
+        'publicKey': q['pbk'] ?? '',
+        'shortId': q['sid'] ?? '',
+        'spiderX': q['spx'] ?? '/',
+      };
+    }
+
+    if (net == 'tcp') {
+      final String headerType = (q['headerType'] ?? 'none').toLowerCase();
+      if (headerType == 'http' || hostHeader.isNotEmpty) {
+        final List<String> paths = (q['path'] != null && q['path']!.isNotEmpty)
+            ? q['path']!.split(',').map((e) => e.trim()).toList()
+            : ['/'];
+        final List<String> hosts = hostHeader.isNotEmpty
+            ? hostHeader.split(',').map((e) => e.trim()).toList()
+            : [defaultHost];
+        stream['tcpSettings'] = {
+          'header': {
+            'type': 'http',
+            'request': {
+              'version': '1.1',
+              'method': 'GET',
+              'path': paths,
+              'headers': {
+                'Host': hosts,
+                'User-Agent': [
+                  'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+                ],
+                'Accept-Encoding': ['gzip, deflate'],
+                'Connection': ['keep-alive'],
+                'Pragma': 'no-cache',
+              }
+            }
+          }
+        };
+      }
+    } else if (net == 'ws') {
+      stream['wsSettings'] = {
+        'path': (q['path'] != null && q['path']!.isNotEmpty) ? q['path']! : '/',
+        if (hostHeader.isNotEmpty) 'headers': {'Host': hostHeader},
+      };
+    } else if (net == 'grpc') {
+      stream['grpcSettings'] = {
+        'serviceName': q['serviceName'] ?? q['path'] ?? '',
+        'multiMode': q['mode'] == 'multi',
+      };
+    } else if (net == 'httpupgrade') {
+      stream['httpupgradeSettings'] = {
+        'path': q['path'] ?? '/',
+        if (hostHeader.isNotEmpty) 'host': hostHeader,
+      };
+    }
+
+    final Map<String, dynamic> sockopt = {};
+    if (gamingMode) {
+      sockopt['tcpNoDelay'] = true;
+      sockopt['tcpKeepAliveIdle'] = 60;
+    }
+    if (enableFragment && security != 'reality') {
+      sockopt['dialerProxy'] = 'fragment';
+      sockopt['tcpNoDelay'] = true;
+    }
+    if (sockopt.isNotEmpty) {
+      stream['sockopt'] = sockopt;
+    }
+
+    return stream;
   }
 }
 
-// ==================== ۷. صفحه واحد و یکپارچه موبایل (نسخه اصلاح‌شده نهایی) ====================
+// ==================== ۷. صفحه واحد و یکپارچه موبایل (نسخه نهایی بدون اتصال خودکار و با پینگ واقعی هسته) ====================
 class LanternSinglePageScreen extends StatefulWidget {
   const LanternSinglePageScreen({super.key});
 
@@ -679,6 +1000,8 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
   bool isBusy = false;
   bool isPingingAll = false;
   bool isSyncingSub = false;
+  int pingedCount = 0;
+  int totalToPing = 0;
 
   bool isAutoPilotMode = false;
   int engineMode = 0; // 0: TUN, 1: Proxy, 2: Fragment, 3: Hotspot
@@ -691,6 +1014,8 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
   int splitTunnelMode = 0;
 
   String connectionDuration = "00:00:00";
+  String realExitIp = "";
+  bool isCheckingIp = false;
   double liveDlSpeed = 0.0;
   double liveUlSpeed = 0.0;
   final List<double> dlWave = List.filled(14, 0.15, growable: true);
@@ -729,10 +1054,15 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
         final bool conn = st == 'CONNECTED';
         final double dl = status.downloadSpeed / (1024 * 1024);
         final double ul = status.uploadSpeed / (1024 * 1024);
+
+        final bool wasConnected = isConnected;
         setState(() {
           isConnected = conn;
           if (conn || st == 'DISCONNECTED') {
             isBusy = false;
+          }
+          if (!conn) {
+            realExitIp = "";
           }
           connectionDuration = status.duration;
           liveDlSpeed = double.parse(dl.toStringAsFixed(2));
@@ -742,6 +1072,11 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
           ulWave.removeAt(0);
           ulWave.add((ul / 3.0).clamp(0.18, 1.0));
         });
+
+        // به محض برقراری اتصال، آی‌پی واقعی خروجی را از طریق تونل چک کن
+        if (conn && !wasConnected) {
+          Future.delayed(const Duration(milliseconds: 900), verifyTunnelExitIp);
+        }
       },
     );
 
@@ -783,11 +1118,11 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
   Future<void> _loadData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final subList = prefs.getStringList('lantern_pro_subs') ?? [];
+      final subList = prefs.getStringList('lantern_pro_subs_v4') ?? [];
       subscriptions =
           subList.map((e) => SubscriptionGroup.fromJson(jsonDecode(e))).toList();
 
-      final profList = prefs.getStringList('lantern_pro_profiles') ?? [];
+      final profList = prefs.getStringList('lantern_pro_profiles_v4') ?? [];
       profiles =
           profList.map((e) => VpnProfile.fromJson(jsonDecode(e))).toList();
 
@@ -812,9 +1147,9 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
   Future<void> _saveData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('lantern_pro_subs',
+      await prefs.setStringList('lantern_pro_subs_v4',
           subscriptions.map((e) => jsonEncode(e.toJson())).toList());
-      await prefs.setStringList('lantern_pro_profiles',
+      await prefs.setStringList('lantern_pro_profiles_v4',
           profiles.map((e) => jsonEncode(e.toJson())).toList());
       await prefs.setString('selectedProfileId', selectedProfileId);
       await prefs.setBool('isAutoPilotMode', isAutoPilotMode);
@@ -843,7 +1178,118 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
     return res.toList();
   }
 
-  // ==================== اصلاح کامل و دقیق الگوریتم مرتب‌سازی پینگ‌ها ====================
+  // ==================== بررسی آی‌پی واقعی خروجی پس از اتصال ====================
+  Future<void> verifyTunnelExitIp() async {
+    if (!isConnected || isCheckingIp) return;
+    setState(() => isCheckingIp = true);
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 6);
+      // استفاده از پروکسی محلی Xray برای اطمینان از اینکه آی‌پی خودِ تونل خوانده می‌شود
+      client.findProxy = (uri) => "PROXY 127.0.0.1:10809; DIRECT";
+      final req = await client.getUrl(Uri.parse('https://api.ipify.org?format=json'));
+      final res = await req.close().timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        final body = await res.transform(utf8.decoder).join();
+        final map = jsonDecode(body);
+        final ip = map['ip']?.toString() ?? '';
+        if (mounted && ip.isNotEmpty) {
+          setState(() => realExitIp = ip);
+        }
+      }
+      client.close();
+    } catch (_) {
+      // تلاش دوم مستقیم از طریق تونل TUN اندروید
+      try {
+        final r = await http
+            .get(Uri.parse('https://api.ipify.org'))
+            .timeout(const Duration(seconds: 5));
+        if (r.statusCode == 200 && mounted) {
+          setState(() => realExitIp = r.body.trim());
+        }
+      } catch (_) {}
+    }
+    if (mounted) setState(() => isCheckingIp = false);
+  }
+
+  // ==================== پینگ ۱۰۰٪ واقعی از طریق هسته Xray (حذف کامل پینگ کاذب Socket) ====================
+  Future<void> testTrueV2RayCorePing(VpnProfile p) async {
+    if (!mounted || p.rawUri.isEmpty) return;
+    setState(() => p.isPinging = true);
+    int realDelay = -2;
+
+    try {
+      final String fullConfig = AndroidTrueXrayEngine.buildFullAndroidConfiguration(
+        p.rawUri,
+        enableFragment: engineMode == 2,
+        gamingMode: gamingMode,
+        allowLan: allowLan || engineMode == 3,
+      );
+
+      // تست واقعی دست‌دهی پروتکل و عبور ترافیک از طریق موتور V2Ray اندروید
+      final int delay = await _flutterV2ray
+          .getServerDelay(config: fullConfig)
+          .timeout(const Duration(milliseconds: 4500), onTimeout: () => -2);
+
+      if (delay > 0 && delay < 7500) {
+        realDelay = delay;
+      } else {
+        realDelay = -2; // سرور واقعاً قطع است و اینترنت رد نمی‌کند
+      }
+    } catch (_) {
+      realDelay = -2;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      p.ping = realDelay;
+      p.isPinging = false;
+    });
+  }
+
+  /// تست نوبتی و دقیق همه سرورها با هسته واقعی V2Ray (بدون قفل شدن پلاگین و بدون پینگ الکی)
+  Future<void> testAllPings() async {
+    final targetList = displayedProfiles;
+    if (targetList.isEmpty) return;
+    HapticFeedback.lightImpact();
+
+    // اگر در حال پینگ گرفتن بود و کاربر دوباره زد، متوقفش کن
+    if (isPingingAll) {
+      setState(() => isPingingAll = false);
+      return;
+    }
+
+    setState(() {
+      isPingingAll = true;
+      pingedCount = 0;
+      totalToPing = targetList.length;
+    });
+
+    // اجرای ۲ تایی روی هسته واقعی V2Ray تا هم سریع باشد و هم هسته Native اندروید قفل نکند
+    const int step = 2;
+    for (int i = 0; i < targetList.length; i += step) {
+      if (!mounted || !isPingingAll) break;
+      final end = (i + step < targetList.length) ? i + step : targetList.length;
+      await Future.wait([
+        for (int j = i; j < end; j++) testTrueV2RayCorePing(targetList[j])
+      ]);
+      if (mounted) {
+        setState(() => pingedCount = end);
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => isPingingAll = false);
+    await _saveData();
+
+    final onlineCount = targetList.where((p) => p.ping > 0).length;
+    _notify(tr(
+      '✅ تست واقعی تمام شد: $onlineCount سرور واقعاً وصل و فعال هستند',
+      '✅ True Ping done: $onlineCount servers are truly online',
+    ));
+  }
+
+  // ==================== مرتب‌سازی دقیق بر اساس پینگ واقعی ====================
   Future<void> sortServersByPing() async {
     if (profiles.isEmpty) {
       _notify(tr('لیست سرورها خالی است', 'Server list is empty'));
@@ -851,17 +1297,10 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
     }
     HapticFeedback.mediumImpact();
 
-    // اگر هنوز هیچ سروری پینگ نگرفته، اول پینگ همه را بگیر و بعد مرتب کن!
-    if (!profiles.any((p) => p.ping > 0) && !isPingingAll) {
-      _notify(tr('در حال دریافت پینگ سرورها برای مرتب‌سازی...',
-          'Pinging servers before sorting...'));
-      await testAllPings();
-    }
-
     int pingRank(int ping) {
-      if (ping > 0) return 0; // اول: سرورهای سالم و دارای پینگ
-      if (ping == -1) return 1; // دوم: سرورهای تست‌نشده
-      return 2; // سوم (آخر لیست): سرورهای Timeout یا خراب
+      if (ping > 0) return 0; // اول: فقط سرورهایی که واقعاً وصل هستند (Online)
+      if (ping == -1) return 1; // دوم: سرورهایی که هنوز تست نشده‌اند
+      return 2; // سوم (ته لیست): سرورهای قطع (Offline / Timeout)
     }
 
     setState(() {
@@ -873,7 +1312,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
         return a.name.compareTo(b.name);
       });
 
-      // انتخاب خودکار سریع‌ترین سرورِ موجود در لیست فعلی پس از مرتب‌سازی
+      // فقط انتخاب سریع‌ترین سرور (بدون اتصال خودکار!)
       final currentList = displayedProfiles;
       if (currentList.isNotEmpty) {
         selectedProfileId = currentList.first.id;
@@ -892,14 +1331,16 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
     final best = activeProfile;
     if (best != null && best.ping > 0) {
       _notify(tr(
-          '⚡ مرتب شد! سریع‌ترین سرور: ${best.name} (${best.ping} ms)',
-          '⚡ Sorted! Fastest: ${best.name} (${best.ping} ms)'));
+          '⚡ مرتب شد! بهترین سرور فعال: ${best.name} (${best.ping} ms)',
+          '⚡ Sorted! Best Online: ${best.name} (${best.ping} ms)'));
     } else {
-      _notify(tr('⚡ لیست سرورها مرتب شد', '⚡ Servers sorted'));
+      _notify(tr(
+          '⚡ مرتب شد (ابتدا دکمه پینگ را بزنید تا سرورهای فعال مشخص شوند)',
+          '⚡ Sorted (Tap Ping first to detect online servers)'));
     }
   }
 
-  // ==================== اتصال ۱۰۰٪ تضمینی، فوری و با تغییر وضعیت آنی دکمه ====================
+  // ==================== اتصال و قطع ۱۰۰٪ دستی فقط با دکمه پاور ====================
   Future<void> toggleConnection() async {
     HapticFeedback.heavyImpact();
     _busyGuardTimer?.cancel();
@@ -912,11 +1353,12 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
       setState(() {
         isConnected = false;
         isBusy = false;
+        realExitIp = "";
         liveDlSpeed = 0.0;
         liveUlSpeed = 0.0;
         connectionDuration = "00:00:00";
       });
-      _notify(tr('🔴 اتصال قطع شد', '🔴 Disconnected'));
+      _notify(tr('🔴 اتصال به صورت دستی قطع شد', '🔴 Disconnected manually'));
       return;
     }
 
@@ -928,8 +1370,17 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
       return;
     }
 
-    // ۳. تغییر آنی ظاهر دکمه به حالت Connecting...
-    setState(() => isBusy = true);
+    // ۳. تغییر ظاهر دکمه به حالت در حال اتصال
+    setState(() {
+      isBusy = true;
+      realExitIp = "";
+    });
+
+    _busyGuardTimer = Timer(const Duration(seconds: 6), () {
+      if (mounted && isBusy) {
+        setState(() => isBusy = false);
+      }
+    });
 
     if (isAutoPilotMode) {
       final validServers = profiles.where((p) => p.ping > 0).toList();
@@ -943,10 +1394,8 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
     selectedProfileId = target.id;
 
     try {
-      // اطمینان از مقداردهی اولیه موتور V2Ray
       await _flutterV2ray.initializeV2Ray();
 
-      // درخواست مجوز VPN اندروید
       final bool hasPerm = await _flutterV2ray.requestPermission();
       if (!hasPerm) {
         setState(() => isBusy = false);
@@ -954,20 +1403,32 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
         return;
       }
 
-      // استخراج کانفیگ ۱۰۰٪ خالص و دست‌نخورده از موتور رسمی پلاگین
-      final String pureConfig =
-          PureAndroidV2RayEngine.getPureNativeConfiguration(target.rawUri);
+      // ساخت کانفیگ کامل (شامل HTTP Header، Reality، WS، TLS و DNS ضد فیلتر)
+      final String fullConfig = AndroidTrueXrayEngine.buildFullAndroidConfiguration(
+        target.rawUri,
+        enableFragment: engineMode == 2,
+        gamingMode: gamingMode,
+        allowLan: allowLan || engineMode == 3,
+      );
+
+      // ابتدا تست سریع هسته روی همین سرور قبل از قفل کردن VPN تا مطمئن شویم سرور زنده است
+      final int preCheckDelay = await _flutterV2ray
+          .getServerDelay(config: fullConfig)
+          .timeout(const Duration(milliseconds: 4500), onTimeout: () => -2);
+
+      if (preCheckDelay > 0) {
+        target.ping = preCheckDelay;
+      }
 
       await _flutterV2ray.startV2Ray(
         remark: target.name,
-        config: pureConfig,
-        proxyOnly: engineMode == 1, // اگر روی حالت Proxy باشد بدون TUN اجرا شود
+        config: fullConfig,
+        proxyOnly: engineMode == 1,
         bypassSubnets: splitTunnelMode == 1
             ? ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
             : null,
       );
 
-      // تغییر وضعیت دکمه به متصل
       if (mounted) {
         setState(() {
           isConnected = true;
@@ -975,6 +1436,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
         });
       }
       _notify(tr('🟢 متصل به «${target.name}»', '🟢 Connected to ${target.name}'));
+      Future.delayed(const Duration(seconds: 1), verifyTunnelExitIp);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -986,52 +1448,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
     }
   }
 
-  // ==================== پینگ سریع و دقیق همه سرورها ====================
-  Future<void> testTcpPing(VpnProfile p) async {
-    if (!mounted || p.address.isEmpty) return;
-    setState(() => p.isPinging = true);
-    int p1 = -2;
-    try {
-      final sw1 = Stopwatch()..start();
-      final s1 = await Socket.connect(
-        p.address,
-        p.port,
-        timeout: const Duration(milliseconds: 1800),
-      );
-      sw1.stop();
-      await s1.close();
-      p1 = sw1.elapsedMilliseconds;
-    } catch (_) {
-      p1 = -2;
-    }
-    if (!mounted) return;
-    setState(() {
-      p.ping = p1;
-      p.jitter = (p1 > 0) ? ((p1 % 9) + 2) : 99;
-      p.isPinging = false;
-    });
-  }
-
-  Future<void> testAllPings() async {
-    final targetList = displayedProfiles;
-    if (targetList.isEmpty || isPingingAll) return;
-    HapticFeedback.lightImpact();
-    setState(() => isPingingAll = true);
-
-    const int batch = 6;
-    for (int i = 0; i < targetList.length; i += batch) {
-      final end =
-          (i + batch < targetList.length) ? i + batch : targetList.length;
-      await Future.wait(
-          [for (int j = i; j < end; j++) testTcpPing(targetList[j])]);
-    }
-
-    if (!mounted) return;
-    setState(() => isPingingAll = false);
-    await _saveData();
-  }
-
-  // ==================== بروزرسانی سریع اشتراک فعال ====================
+  // ==================== بروزرسانی و کلیپ‌بورد ====================
   Future<void> updateCurrentOrAllSubscriptions() async {
     HapticFeedback.mediumImpact();
     if (subscriptions.isEmpty) {
@@ -1078,13 +1495,13 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
     String body = rawText.trim();
     if (!body.contains('://')) {
       try {
-        body = PureAndroidV2RayEngine.decodeB64(body);
+        body = AndroidTrueXrayEngine.decodeB64(body);
       } catch (_) {}
     }
     final lines = body.split(RegExp(r'[\r\n]+'));
     int added = 0;
     for (var l in lines) {
-      final p = PureAndroidV2RayEngine.parseProfile(
+      final p = AndroidTrueXrayEngine.parseProfile(
           l, subId, profiles.length + added + 1);
       if (p != null) {
         profiles.insert(0, p);
@@ -1094,7 +1511,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
     if (added > 0) {
       setState(() => selectedProfileId = profiles.first.id);
       _saveData();
-      testAllPings();
     }
     return added;
   }
@@ -1121,7 +1537,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
         String body = res.body.trim();
         if (!body.contains('://')) {
           try {
-            body = PureAndroidV2RayEngine.decodeB64(body);
+            body = AndroidTrueXrayEngine.decodeB64(body);
           } catch (_) {}
         }
 
@@ -1179,7 +1595,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
         final newProfiles = <VpnProfile>[];
 
         for (var l in lines) {
-          final p = PureAndroidV2RayEngine.parseProfile(
+          final p = AndroidTrueXrayEngine.parseProfile(
               l, targetSubId, newProfiles.length + 1);
           if (p != null) {
             final gm = RegExp(r'(\d+(?:\.\d+)?)\s*GB', caseSensitive: false)
@@ -1236,7 +1652,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
         _notify(tr(
             '✦ اشتراک «$finalTitle» با ${newProfiles.length} سرور بروزرسانی شد!',
             '✦ Synced $finalTitle (${newProfiles.length} nodes)'));
-        await testAllPings();
       }
     } catch (_) {
       _notify(tr('خطا در ارتباط با سرور اشتراک',
@@ -1347,7 +1762,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
     );
   }
 
-  // ==================== پنل بالایی: دکمه بزرگ بروزرسانی + گوی پاور واکنش‌گرا ====================
+  // ==================== پنل بالایی: نمایش آی‌پی واقعی و کنترل دستی اتصال ====================
   Widget _buildTopCommandPanel3D(NeonThemePalette pal) {
     final VpnProfile? current = activeProfile;
     final engineLabels = ['🛡️ TUN', '🌐 Proxy', '⚡ Fragment', '🔌 Hotspot'];
@@ -1358,7 +1773,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ردیف ۱: لوگو + دکمه بزرگ بروزرسانی اشتراک + دکمه تنظیمات
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1386,18 +1800,24 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                       const Text('Lantern 3D',
                           style: TextStyle(
                               fontWeight: FontWeight.w900, fontSize: 15.5)),
-                      Text(pal.nameEn,
-                          style: TextStyle(
-                              fontSize: 9.5,
-                              color: pal.secondary,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        isConnected && realExitIp.isNotEmpty
+                            ? 'Exit IP: $realExitIp ✓'
+                            : pal.nameEn,
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          color: isConnected && realExitIp.isNotEmpty
+                              ? const Color(0xFF00E676)
+                              : pal.secondary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ],
               ),
               Row(
                 children: [
-                  // دکمه بزرگ و خوش‌دست آپدیت سرورها در هدر بالا
                   _buildBigHeaderButton(
                     icon: isSyncingSub
                         ? Icons.hourglass_top_rounded
@@ -1420,7 +1840,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
           ),
           const SizedBox(height: 8),
 
-          // ردیف ۲: ۴ حالت موتور اتصال
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
@@ -1466,10 +1885,9 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
           ),
           const SizedBox(height: 10),
 
-          // ردیف ۳: دکمه بزرگ Connect با واکنش لمسی قطعی + پنل سرعت و گیمینگ
           Row(
             children: [
-              // دکمه پاور با Material + InkWell برای دریافت ۱۰۰٪ ضربات لمسی
+              // دکمه پاور بزرگ برای اتصال و قطع کاملاً دستی
               Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -1574,7 +1992,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                                     ? tr('در حال اتصال', 'CONNECTING')
                                     : (isConnected
                                         ? connectionDuration
-                                        : tr('اتصال', 'CONNECT')),
+                                        : tr('اتصال دستی', 'CONNECT')),
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w900,
@@ -1594,14 +2012,13 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
               ),
               const SizedBox(width: 12),
 
-              // ستون وضعیت + دکمه گیمینگ + سرعت زنده
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 4),
+                          horizontal: 9, vertical: 5),
                       decoration: BoxDecoration(
                         color: isConnected
                             ? const Color(0xFF00E676).withOpacity(0.15)
@@ -1629,16 +2046,16 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                           Expanded(
                             child: Text(
                               isConnected
-                                  ? tr('متصل: ${current?.name ?? "سرور"}',
+                                  ? tr('متصل به: ${current?.name ?? "سرور"}',
                                       'Connected: ${current?.name ?? "Server"}')
                                   : tr(
-                                      'آماده: ${current?.name ?? "سرور را انتخاب کنید"}',
-                                      'Ready: ${current?.name ?? "Select Server"}'),
+                                      'انتخاب‌شده: ${current?.name ?? "هیچکدام"} (برای اتصال دکمه پاور را بزنید)',
+                                      'Selected: ${current?.name ?? "None"} (Tap Power)'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontWeight: FontWeight.w900,
-                                fontSize: 11.5,
+                                fontSize: 10.5,
                                 color: isConnected
                                     ? const Color(0xFF00E676)
                                     : Colors.white,
@@ -1650,7 +2067,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                     ),
                     const SizedBox(height: 6),
 
-                    // دکمه گیمینگ
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.lightImpact();
@@ -1717,7 +2133,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                     ),
                     const SizedBox(height: 6),
 
-                    // سرعت دانلود و آپلود
                     Row(
                       children: [
                         Expanded(
@@ -1801,7 +2216,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
     );
   }
 
-  // ==================== پنل پایینی: کارت‌های بزرگ اشتراک + مرتب‌سازی دقیق پینگ ====================
+  // ==================== پنل پایینی: انتخاب دستی سرورها + نمایش وضعیت واقعی «وصل / قطع» ====================
   Widget _buildBottomServersAndSubsPanel3D(NeonThemePalette pal) {
     final list = displayedProfiles;
 
@@ -1810,7 +2225,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
       decoration: _box3DDecoration(pal),
       child: Column(
         children: [
-          // ۱. کلید سه‌بعدی «انتخاب دستی 🔒» و «خلبان خودکار 🤖»
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
@@ -1849,7 +2263,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(
-                              tr('انتخاب دستی (ثابت)', 'Manual Lock Mode'),
+                              tr('انتخاب دستی (کنترل با شما)', 'Manual Control'),
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                   fontWeight: FontWeight.w900,
@@ -1894,7 +2308,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(
-                              tr('خلبان خودکار (Auto)', 'Smart Auto-Pilot'),
+                              tr('انتخاب خودکار بهترین پینگ', 'Auto Select Best'),
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                   fontWeight: FontWeight.w900,
@@ -1914,7 +2328,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
           ),
           const SizedBox(height: 8),
 
-          // ۲. کارت‌های اشتراک با دکمه‌های بزرگ و خوش‌دست «بروزرسانی» و «حذف»
           if (subscriptions.isNotEmpty) ...[
             SizedBox(
               height: 88,
@@ -1989,7 +2402,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // ردیف بالا: نام اشتراک + دکمه‌های کپسولی بزرگ آپدیت و حذف
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -2004,7 +2416,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 6),
-                                // دکمه بزرگ و لمسی آپدیت اشتراک
                                 InkWell(
                                   onTap: () => _importSubscription(sub.url,
                                       existingSubId: sub.id),
@@ -2038,7 +2449,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 5),
-                                // دکمه بزرگ و لمسی حذف اشتراک
                                 InkWell(
                                   onTap: () {
                                     HapticFeedback.mediumImpact();
@@ -2078,8 +2488,6 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                                 ),
                               ],
                             ),
-
-                            // ردیف پایین: حجم و روزهای باقی‌مانده
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -2128,7 +2536,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
             const SizedBox(height: 8),
           ],
 
-          // ۳. نوار ابزار بزرگ و خوش‌دست (جستجو + پینگ + مرتب‌سازی + کلیپ‌بورد + افزودن)
+          // نوار ابزار جستجو + پینگ واقعی هسته + مرتب‌سازی
           Row(
             children: [
               Expanded(
@@ -2164,7 +2572,9 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
               const SizedBox(width: 5),
               _buildActionToolbarButton(
                 icon: Icons.bolt_rounded,
-                label: isPingingAll ? '...' : tr('پینگ', 'Ping'),
+                label: isPingingAll
+                    ? '$pingedCount/$totalToPing'
+                    : tr('پینگ واقعی', 'True Ping'),
                 pal: pal,
                 onTap: testAllPings,
               ),
@@ -2193,7 +2603,7 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
           ),
           const SizedBox(height: 8),
 
-          // ۴. لیست سرورها با پرچم وکتور واقعی و اتصال مستقیم با لمس
+          // ۴. لیست سرورها: با ضربه زدن فقط انتخاب می‌شود (اتصال خودکار ندارد!) + نمایش «وصله» فقط برای سرورهای واقعاً آنلاین
           Expanded(
             child: list.isEmpty
                 ? Center(
@@ -2239,30 +2649,26 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                     itemBuilder: (context, index) {
                       final p = list[index];
                       final bool selected = p.id == selectedProfileId;
-                      Color pCol = pal.secondary;
-                      if (p.ping > 250) pCol = const Color(0xFFFFB300);
-                      if (p.ping <= 0 || p.ping > 600) {
-                        pCol = const Color(0xFFFF4D6D);
-                      }
+                      final bool trulyOnline = p.ping > 0;
+                      final bool isDead = p.ping == -2;
+
+                      Color pCol = const Color(0xFF00E676);
+                      if (p.ping > 300) pCol = const Color(0xFFFFB300);
+                      if (!trulyOnline) pCol = const Color(0xFFFF4D6D);
 
                       return GestureDetector(
                         onTap: () async {
+                          // فقط انتخاب دستی سرور! هیچ اتصال یا قطع خودکاری انجام نمی‌شود
                           HapticFeedback.selectionClick();
-                          final wasConn = isConnected;
                           setState(() {
                             selectedProfileId = p.id;
                             isAutoPilotMode = false;
                           });
                           await _saveData();
-                          if (wasConn) {
-                            try {
-                              await _flutterV2ray.stopV2Ray();
-                            } catch (_) {}
-                            setState(() => isConnected = false);
-                            await Future.delayed(
-                                const Duration(milliseconds: 300));
-                          }
-                          await toggleConnection();
+                          _notify(tr(
+                            '📌 سرور «${p.name}» انتخاب شد. برای اتصال یا قطع، دکمه پاور بالا را بزنید.',
+                            '📌 Selected "${p.name}". Tap the Power button above to connect.',
+                          ));
                         },
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 7),
@@ -2282,7 +2688,9 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                             border: Border.all(
                               color: selected
                                   ? pal.secondary
-                                  : Colors.white.withOpacity(0.08),
+                                  : (trulyOnline
+                                      ? const Color(0xFF00E676).withOpacity(0.3)
+                                      : Colors.white.withOpacity(0.08)),
                               width: selected ? 1.6 : 1,
                             ),
                           ),
@@ -2317,39 +2725,71 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                                                 fontSize: 12.5),
                                           ),
                                         ),
-                                        if (p.isGameReady) ...[
-                                          const SizedBox(width: 5),
+                                        if (trulyOnline) ...[
+                                          const SizedBox(width: 6),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                                horizontal: 5, vertical: 1),
+                                                horizontal: 6, vertical: 1.5),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFFF2E93)
-                                                  .withOpacity(0.2),
+                                              color: const Color(0xFF00E676)
+                                                  .withOpacity(0.18),
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                                  BorderRadius.circular(5),
+                                              border: Border.all(
+                                                  color: const Color(0xFF00E676)
+                                                      .withOpacity(0.5)),
                                             ),
-                                            child: const Text('🎯 GAME',
-                                                style: TextStyle(
-                                                    fontSize: 7.5,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Color(0xFFFF85B3))),
+                                            child: Text(
+                                              tr('● وصله', '● Online'),
+                                              style: const TextStyle(
+                                                fontSize: 8.5,
+                                                fontWeight: FontWeight.w900,
+                                                color: Color(0xFF00E676),
+                                              ),
+                                            ),
+                                          ),
+                                        ] else if (isDead) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFF4D6D)
+                                                  .withOpacity(0.15),
+                                              borderRadius:
+                                                  BorderRadius.circular(5),
+                                            ),
+                                            child: Text(
+                                              tr('✕ قطع', '✕ Offline'),
+                                              style: const TextStyle(
+                                                fontSize: 8.5,
+                                                fontWeight: FontWeight.w900,
+                                                color: Color(0xFFFF4D6D),
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ],
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${p.protocol} • ${p.address}:${p.port}',
+                                      '${p.protocol} • ${p.address}:${p.port}${selected ? tr(" • [انتخاب‌شده]", " • [Selected]") : ""}',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          fontSize: 9.5, color: Colors.white54),
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        color: selected
+                                            ? pal.secondary
+                                            : Colors.white54,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
+
+                              // دکمه تست پینگ واقعی هسته برای همین سرور
                               GestureDetector(
-                                onTap: () => testTcpPing(p),
+                                onTap: () => testTrueV2RayCorePing(p),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 9, vertical: 5),
@@ -2357,9 +2797,13 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                                     color: Colors.black38,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                        color: p.ping > 0
-                                            ? pCol.withOpacity(0.45)
-                                            : Colors.white10),
+                                      color: trulyOnline
+                                          ? pCol.withOpacity(0.55)
+                                          : (isDead
+                                              ? const Color(0xFFFF4D6D)
+                                                  .withOpacity(0.4)
+                                              : Colors.white10),
+                                    ),
                                   ),
                                   child: p.isPinging
                                       ? SizedBox(
@@ -2369,17 +2813,20 @@ class _LanternSinglePageScreenState extends State<LanternSinglePageScreen>
                                               strokeWidth: 2,
                                               color: pal.secondary))
                                       : Text(
-                                          p.ping > 0
-                                              ? '${p.ping} ms'
-                                              : (p.ping == -2
-                                                  ? 'Timeout'
-                                                  : 'Ping'),
+                                          trulyOnline
+                                              ? '${p.ping} ms ✓'
+                                              : (isDead
+                                                  ? tr('قطع', 'Offline')
+                                                  : tr('تست پینگ', 'Test')),
                                           style: TextStyle(
-                                              fontSize: 10.5,
-                                              fontWeight: FontWeight.w900,
-                                              color: p.ping > 0
-                                                  ? pCol
-                                                  : Colors.white38),
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w900,
+                                            color: trulyOnline
+                                                ? pCol
+                                                : (isDead
+                                                    ? const Color(0xFFFF4D6D)
+                                                    : Colors.white54),
+                                          ),
                                         ),
                                 ),
                               ),
